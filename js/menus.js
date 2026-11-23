@@ -395,6 +395,7 @@ const TYPE_COLOR = { pesada: 0xc0392b, leve: 0x27ae60, magica: 0x8e44ad, any: 0x
 const TYPE_SLOT = { pesada: 'slot_red', leve: 'slot_green', magica: 'slot_purple', any: 'slot_gold' };
 // [moldura, ícone, o ícone já vem com moldura?]
 const ITEM_ICON = {
+  c_soulshot: ['slot_blue', 'icon_diamond'],
   w_train_sword: [null, 'icon_sword_red', true], w_longsword: [null, 'icon_sword_red', true], w_thornblade: [null, 'icon_sword_red', true],
   w_train_bow: ['slot_green', 'icon_bow'], w_recurve: ['slot_green', 'icon_bow2'], w_shadowbow: ['slot_green', 'icon_bow2'],
   w_train_staff: [null, 'icon_staff', true], w_oakstaff: [null, 'icon_staff', true], w_rootstaff: [null, 'icon_staff', true],
@@ -563,7 +564,7 @@ class ShopScene extends Phaser.Scene {
     txt(this, W / 2, 40, 'Loja', 46, '#f2c766', { origin: 0.5, title: true }).setStroke('#3a2208', 7);
     this.add.image(W - 118, 42, 'ui_counter_coin').setScale(0.62);
     this.goldT = txt(this, W - 60, 42, '', 26, '#f3e2b8', { origin: [1, 0.5] });
-    const tabs = [['arma', 'Armas'], ['armadura', 'Armaduras'], ['joia', 'Joias'], ['pergaminho', 'Pergaminhos']];
+    const tabs = [['arma', 'Armas'], ['armadura', 'Armaduras'], ['joia', 'Joias'], ['pergaminho', 'Consumíveis']];
     this.tabBtns = {};
     tabs.forEach(([id, label], i) => {
       this.tabBtns[id] = button(this, 275 + i * 255, 108, 234, 56, label, () => { this.tab = id; this.draw(); }, { size: 22, skin: 'tab_dark' });
@@ -581,7 +582,7 @@ class ShopScene extends Phaser.Scene {
       b.setSkin(id === this.tab ? 'tab_sel' : 'tab_dark');
       b.label.setColor(id === this.tab ? '#f6e7c1' : '#b9ae95');
     }
-    const list = Object.entries(ITEMS).filter(([, d]) => d.shop && d.slot === this.tab);
+    const list = Object.entries(ITEMS).filter(([, d]) => d.shop && (d.slot === this.tab || (this.tab === 'pergaminho' && d.slot === 'consumivel')));
     const L = (o) => { this.layer.add(o); return o; };
     list.forEach(([id, d], i) => {
       const x = 78 + (i % 3) * 400, y = 172 + Math.floor(i / 3) * 222, w = 372, h = 200;
@@ -590,13 +591,17 @@ class ShopScene extends Phaser.Scene {
       const ink = mine ? '#3b2510' : '#f3e2b8';
       L(itemIcon(this, x + 66, y + 66, { id, plus: 0 }, 84));
       L(txt(this, x + 122, y + 26, d.name, 20, ink, { wrap: 236, title: true, stroke: mine ? 0 : 3 }));
-      L(txt(this, x + 122, y + 82, `${GEAR_TYPE_LABEL[d.type]}${d.lvl > 1 ? ' • Nv.' + d.lvl : ''}`, 16, TYPE_TXT(d.type), { stroke: mine ? 0 : 3 }));
-      L(txt(this, x + 26, y + 112, d.info || statsLine({ id, plus: 0 }), 15, mine ? '#5a4128' : '#cfc3a6', { wrap: 330, bold: false, stroke: 0 }));
+      if (d.info) L(txt(this, x + 122, d.name.length > 16 ? y + 78 : y + 58, d.info, 15, '#5a4128', { wrap: 232, bold: false, stroke: 0 })); // consumíveis: texto ao lado do ícone
+      else {
+        L(txt(this, x + 122, y + 82, `${GEAR_TYPE_LABEL[d.type]}${d.lvl > 1 ? ' • Nv.' + d.lvl : ''}`, 16, TYPE_TXT(d.type), { stroke: mine ? 0 : 3 }));
+        L(txt(this, x + 26, y + 112, statsLine({ id, plus: 0 }), 15, mine ? '#5a4128' : '#cfc3a6', { wrap: 330, bold: false, stroke: 0 }));
+      }
       if (!mine) L(txt(this, x + w - 28, y + 112, 'Outra classe', 15, '#ff6b5e', { origin: [1, 0], stroke: 3 }));
       const buy = L(button(this, x + w / 2, y + h - 34, 214, 50, 'Comprar', () => {
         if (c.gold < d.price) return toast(this, 'Ouro insuficiente', COL.red);
-        if (c.bag.length >= bagCap(c)) return toast(this, 'Mochila cheia', COL.red);
-        c.gold -= d.price; c.bag.push(Save.makeItem(id)); Save.write(); Sfx.coin();
+        if (isStack(id) ? !addItem(c, id, { qty: d.shopQty || 1 }) : c.bag.length >= bagCap(c)) return toast(this, 'Mochila cheia', COL.red);
+        if (!isStack(id)) c.bag.push(Save.makeItem(id));
+        c.gold -= d.price; Save.write(); Sfx.coin();
         toast(this, `${d.name} foi para a mochila`, COL.green); this.draw();
       }, { size: 19, skin: 'btn_buy', textX: -36 }));
       buy.add(uiImg(this, 26, -1, 'coin_c', 24));

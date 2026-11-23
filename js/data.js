@@ -4,7 +4,8 @@
 // ============================================================
 
 const GAME_TITLE = 'Lendas de Aether'; // nome provisório
-const GAME_VERSION = '0.5.3'; // tools/make_update.py atualiza sozinho
+const GAME_VERSION = '0.5.4'; // tools/make_update.py atualiza sozinho
+const SOULSHOT_MULT = 1.25; // Soulshot: +25% de dano no ataque básico (gasta 1 por ataque)
 const DASH_COOLDOWN = 4000; // ms entre um desvio (Espaço) e outro — vale para todas as classes
 const W = 1280, H = 720, GROUND_Y = 590;
 
@@ -167,6 +168,8 @@ const ITEMS = {
   p_archrobe:      { name: 'Túnica do Arquimago', slot: 'armadura', type: 'magica', def: 7, hp: 35, atk: 5, price: 900, lvl: 4, premium: true, look: '👑 Muda o visual do personagem' },
   p_phoenixamulet: { name: 'Amuleto da Fênix', slot: 'joia', type: 'any', hp: 40, atk: 4, crit: 3, price: 700, lvl: 2, premium: true, look: '🔥 Aura de brasas' },
   // ---------- consumíveis
+  c_soulshot: { name: 'Soulshot', slot: 'consumivel', type: 'any', price: 100, lvl: 1, shop: true, shopQty: 100, use: 'auto',
+    info: '100 cargas. Cada ataque gasta 1: +25% de dano e pó mágico na arma (automático).' },
   c_potion:  { name: 'Poção de Vida', slot: 'consumivel', type: 'any', price: 60, lvl: 1, use: 'battle', info: 'Na batalha (tecla Q ou botão da poção): recupera 40% da vida. Até 3 por fase.' },
   c_phoenix: { name: 'Pena da Fênix', slot: 'consumivel', type: 'any', price: 200, lvl: 1, use: 'auto', info: 'Se você cair na batalha, revive na hora com 50% da vida (gasta 1 pena).' },
   s_blessed: { name: 'Pergaminho Abençoado', slot: 'pergaminho', type: 'any', price: 240, lvl: 1, info: 'Encanta o item equipado: +1 nível com 100% de sucesso (até +10).' },

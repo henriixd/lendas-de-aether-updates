@@ -122,6 +122,7 @@ class BattleScene extends Phaser.Scene {
     this.hpTxt = this.hud(txt(this, 227, 73, '', 16, '#fff', { origin: 0.5 }));
     this.mpBar = this.hud(bar(this, 32, 94, 390, 14, 0x3d7bff));
     this.mpTxt = this.hud(txt(this, 227, 101, '', 12, '#fff', { origin: 0.5 }));
+    this.ssTxt = this.hud(txt(this, 32, 132, '', 15, '#9fdfff', { origin: [0, 0.5] }));
 
     this.hud(txt(this, W / 2, 20, `${this.area.name} • Fase ${this.phase}`, 22, COL.goldTxt, { origin: [0.5, 0], title: true }));
     this.dots = this.segments.map((s, i) => this.hud(txt(this, W / 2 + (i - 1) * 40, 58, s.boss ? '☠' : '●', 24, COL.dim, { origin: [0.5, 0] })));
@@ -141,6 +142,7 @@ class BattleScene extends Phaser.Scene {
     const p = this.p;
     this.hpBar.set(p.hp / p.maxHp); this.hpTxt.setText(`${Math.max(0, Math.ceil(p.hp))} / ${p.maxHp}`);
     this.mpBar.set(p.mp / 100); this.mpTxt.setText(p.mp >= 100 ? 'ESPECIAL PRONTO!' : `MP ${Math.floor(p.mp)}`);
+    const ssn = this.ssCount(); if (this.ssTxt.text !== (ssn ? `✦ Soulshot x${ssn}` : '')) this.ssTxt.setText(ssn ? `✦ Soulshot x${ssn}` : '');
     this.dots.forEach((d, i) => d.setColor(i < this.seg ? COL.goldTxt : i === this.seg ? '#ffffff' : COL.dim));
     const boss = this.monsters.find(m => m.boss && m.hp > 0);
     this.bossUi.setVisible(!!boss);
@@ -186,8 +188,7 @@ class BattleScene extends Phaser.Scene {
       this.hud(txt(this, 22, H - 22, 'A/D andar • W pular • S descer • J atacar • ESC pausar', 15, '#e8dfc8', { origin: [0, 0.5], bold: false }).setAlpha(0.8));
       return;
     }
-    mk(105, H - 95, 64, '◀', () => this.held.left = true, () => this.held.left = false, 34);
-    mk(255, H - 95, 64, '▶', () => this.held.right = true, () => this.held.right = false, 34);
+    this.makeStick();
     mk(W - 125, H - 110, 82, this.k.attack.kind === 'melee' ? '⚔' : this.k.attack.kind === 'arrow' ? '🏹' : '✦',
       () => { this.tap.atk = true; this.atkHeld = true; }, () => this.atkHeld = false, 44);
     mk(W - 275, H - 72, 56, '⤒', () => { this.tap.jump = true; this.jumpHeld = true; }, () => this.jumpHeld = false, 32);
@@ -196,6 +197,45 @@ class BattleScene extends Phaser.Scene {
     this.slots.push(this.skillSlot(W - 95, H - 268, 96, 'k', '', '100', st.k, () => this.tap.skill = true));
     if (lvl >= sk[1].lvl) this.slots.push(this.skillSlot(W - 215, H - 360, 82, 'l', '', String(SKILL2_MP), st.l, () => this.tap.skill2 = true));
     if (!this.pvp) this.slots.push(this.skillSlot(W - 360, H - 330, 72, 'pot', '', 'x0', st.pot, () => this.tap.pot = true));
+  }
+
+  // analógico (celular): toque em qualquer lugar do lado esquerdo e arraste.
+  // Para os lados = andar (mais longe = mais rápido) • para cima = pular • para baixo = descer da plataforma
+  makeStick() {
+    const R = 74, HOME = { x: 170, y: H - 150 };
+    const base = this.add.circle(HOME.x, HOME.y, R, 0x000000, 0.32).setStrokeStyle(3, 0xffffff, 0.4).setScrollFactor(0).setDepth(1100);
+    const knob = this.add.circle(HOME.x, HOME.y, 34, 0xffffff, 0.35).setStrokeStyle(3, 0xffffff, 0.7).setScrollFactor(0).setDepth(1101);
+    const arrows = txt(this, HOME.x, HOME.y + R + 18, '◀  ▶', 18, '#ffffff', { origin: 0.5 }).setScrollFactor(0).setDepth(1100).setAlpha(0.45);
+    const st = this.stick = { id: null, cx: HOME.x, cy: HOME.y, up: false, down: false };
+    const zone = this.add.zone(0, 230, 560, H - 230).setOrigin(0).setScrollFactor(0).setInteractive().setDepth(1090);
+    const set = (ptr) => {
+      let dx = ptr.x - st.cx, dy = ptr.y - st.cy; const d = Math.hypot(dx, dy);
+      if (d > R) { dx *= R / d; dy *= R / d; }
+      knob.setPosition(st.cx + dx, st.cy + dy);
+      const ax = Math.abs(dx);
+      this.held.left = dx < -16; this.held.right = dx > 16;
+      this.held.mag = ax > 16 ? Phaser.Math.Clamp(0.4 + (ax - 16) / (R - 30), 0.4, 1) : 1;
+      // pular / descer: só quando o dedo vai bem para cima / para baixo (e uma vez por gesto)
+      const up = dy < -R * 0.72 && Math.abs(dy) > ax, down = dy > R * 0.72 && Math.abs(dy) > ax;
+      if (up && !st.up) { this.tap.jump = true; this.jumpHeld = true; }
+      if (!up && st.up) this.jumpHeld = false;
+      if (down && !st.down && this.p.plat) this.p.dropT = 180;
+      st.up = up; st.down = down;
+    };
+    zone.on('pointerdown', (ptr) => {
+      if (st.id !== null) return;
+      st.id = ptr.id; st.cx = Phaser.Math.Clamp(ptr.x, R + 10, 560 - R); st.cy = Phaser.Math.Clamp(ptr.y, 230 + R, H - R - 10);
+      base.setPosition(st.cx, st.cy).setAlpha(1); knob.setPosition(st.cx, st.cy); arrows.setVisible(false);
+      set(ptr);
+    });
+    this.input.on('pointermove', (ptr) => { if (ptr.id === st.id) set(ptr); });
+    const release = (ptr) => {
+      if (ptr.id !== st.id) return;
+      st.id = null; st.up = st.down = false;
+      this.held.left = this.held.right = false; this.held.mag = 1; this.jumpHeld = false;
+      base.setPosition(HOME.x, HOME.y); knob.setPosition(HOME.x, HOME.y); arrows.setVisible(true);
+    };
+    this.input.on('pointerup', release); this.input.on('pointerupoutside', release);
   }
 
   // ícone de habilidade: escurece de cima para baixo enquanto carrega / recarrega,
@@ -337,7 +377,7 @@ class BattleScene extends Phaser.Scene {
         if (p.action === 'hurt' && now - p.hurtAt > 190 && (dir || p.bJump > 0 || p.bAtk > 0)) { p.action = null; p.anim = null; }
         if (dir && p.action !== 'attack' && p.action !== 'special') p.face = dir;
         const slow = p.action === 'special' ? 0 : p.action === 'hurt' ? 0.55 : p.action === 'attack' ? (p.ground ? 0.72 : 1) : 1;
-        const target = dir * MOVE_SPEED * slow;
+        const target = dir * MOVE_SPEED * slow * (this.held.mag || 1); // analógico: empurrar pouco = andar devagar
         // acelera rápido, freia ainda mais rápido (resposta imediata)
         const acc = (p.ground ? (dir && Math.sign(target) === Math.sign(p.vx || target) ? 4200 : 7000) : 3800) * dt;
         if (p.ground && dir && p.vx * dir < -220) this.skid(); // virada brusca levanta poeira
@@ -644,6 +684,18 @@ class BattleScene extends Phaser.Scene {
 
   // ======================================================== ATAQUES
   emitAct() {} // na arena online, avisa o outro jogador de cada ação (ArenaBattleScene)
+  // Soulshot: gasta 1 da mochila a cada ataque básico (+25% de dano), com som e pó mágico saindo da arma
+  useSoulshot() {
+    const c = this.ch, st = c.bag.find(b => b.id === 'c_soulshot');
+    if (!st) return false;
+    st.qty = (st.qty || 1) - 1;
+    if (st.qty <= 0) { c.bag = c.bag.filter(b => b !== st); toast(this, 'Acabou o Soulshot — compre mais na Loja', '#9fb4d8'); }
+    this.ssUsed = (this.ssUsed || 0) + 1;
+    if (this.ssUsed % 25 === 0 || st.qty <= 0) Save.write(); // salva de vez em quando (não a cada golpe)
+    soulshotFx(this, this.p.spr, c.cls, this.p.face, this.p.x, this.p.y);
+    return true;
+  }
+  ssCount() { const st = this.ch.bag.find(b => b.id === 'c_soulshot'); return st ? (st.qty || 1) : 0; }
   rollDmg(mult) {
     const crit = Math.random() * 100 < this.st.crit;
     return { dmg: Math.max(1, Math.round(this.st.atk * mult * Phaser.Math.FloatBetween(0.9, 1.1) * (crit ? 1.8 : 1))), crit };
@@ -672,14 +724,15 @@ class BattleScene extends Phaser.Scene {
     // combo de 3 golpes: o 3º é mais forte (empurra e treme a tela)
     p.combo = now - p.lastAtk < 650 ? (p.combo + 1) % 3 : 0;
     p.lastAtk = now;
-    this.emitAct({ a: 'atk', combo: p.combo, face: p.face });
+    const ss = this.useSoulshot();
+    this.emitAct({ a: 'atk', combo: p.combo, face: p.face, ss: ss ? 1 : 0 });
     const fin = p.combo === 2;
     const hitMs = animFrameMs(cls, 'attack', cfg.hit);
     p.cancelAt = now + hitMs + 60;
     p.cd = Math.max(a.cooldown * 0.6, hitMs + 60);
     p.action = 'attack'; this.playAnim('attack', true);
     const face = p.face; p.atkFace = face;
-    const mult = a.mult * (fin ? 1.45 : 1);
+    const mult = a.mult * (fin ? 1.45 : 1) * (ss ? SOULSHOT_MULT : 1);
     if (p.ground) p.vx = face * MOVE_SPEED * 0.45; // pequeno passo junto do golpe
     this.onFrame('attack', cfg.hit, () => {
       if (a.kind === 'melee') {
@@ -1401,6 +1454,7 @@ class BattleScene extends Phaser.Scene {
   }
   defeat() {
     this.state = 'ended';
+    Save.write();
     this.clearHazards();
     this.time.delayedCall(250, () => Sfx.lose());
     const p = this.p;
@@ -1490,5 +1544,22 @@ class BattleScene extends Phaser.Scene {
     this.tweens.add({ targets: c, x: tx, duration: 500 });
     this.tweens.add({ targets: c, y: y - Phaser.Math.Between(40, 100), duration: 250, ease: 'Quad.out', yoyo: true,
       onComplete: () => this.tweens.add({ targets: c, x: this.p.x, y: this.p.y - 100, alpha: 0, duration: 350, delay: 200, onComplete: () => { c.destroy(); Sfx.coin(); } }) });
+  }
+}
+
+// pó mágico saindo da arma (Soulshot) — usado pelo jogador e pelo rival da Arena
+function soulshotFx(scene, spr, cls, face, x, y, vol = 0.45) {
+  Sfx.play('soulshot', vol, 0.04);
+  const m = ANIM_META[spr.texture.key], h = (m ? m.size : 216) * Math.abs(spr.scaleY);
+  const at = { warrior: [0.28, 0.4], hunter: [0.24, 0.5], mage: [0.3, 0.8] }[cls] || [0.25, 0.5];
+  const wx = x + face * h * at[0], wy = y - h * at[1];
+  const flash = scene.add.image(wx, wy, 'fx_glow').setTint(0x9fdfff).setScale(0.25).setAlpha(0.9).setDepth(27).setBlendMode('ADD');
+  scene.tweens.add({ targets: flash, scale: 0.7, alpha: 0, duration: 260, onComplete: () => flash.destroy() });
+  for (let i = 0; i < 16; i++) {
+    const d = scene.add.image(wx + Phaser.Math.Between(-18, 18), wy + Phaser.Math.Between(-30, 30), 'fx_dot')
+      .setTint(Phaser.Utils.Array.GetRandom([0x9fdfff, 0xffffff, 0x7fb8ff, 0xd6c8ff])).setScale(Phaser.Math.FloatBetween(0.25, 0.6)).setDepth(27).setBlendMode('ADD');
+    const a = Phaser.Math.FloatBetween(-Math.PI, 0), r = Phaser.Math.Between(25, 85);
+    scene.tweens.add({ targets: d, x: d.x + Math.cos(a) * r + face * 20, y: d.y + Math.sin(a) * r, alpha: 0, scale: 0.05,
+      duration: Phaser.Math.Between(320, 560), ease: 'Quad.out', onComplete: () => d.destroy() });
   }
 }

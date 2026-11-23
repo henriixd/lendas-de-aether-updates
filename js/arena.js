@@ -53,7 +53,7 @@ function makeBot(c, a, slot) {
   if (level >= 8 && Math.random() < 0.15) equip.arma = { id: PREMIUM_WEAPON[cls], rarity: 'epico', plus: 3 };
   const pts = Math.max(0, a.pts + [-70, 0, 90][slot] + Phaser.Math.Between(-30, 30));
   const name = Phaser.Utils.Array.GetRandom(BOT_NAMES) + (Math.random() < 0.35 ? Phaser.Math.Between(2, 99) : '');
-  return { name, cls, gender, level, equip, pts, bot: true };
+  return { name, cls, gender, level, equip, pts, bot: true, ss: level >= 8 && Math.random() < 0.5 };
 }
 function botSkill(o) { return Phaser.Math.Clamp(0.25 + (o.pts - ARENA_START) / 900, 0.2, 0.92); }
 // o que o outro aparelho precisa saber do meu herói
@@ -114,8 +114,10 @@ class Rival {
   }
 
   // ---------------------------------------------------------- AÇÕES (IA ou vindas da rede)
-  doAttack(combo, face) {
+  doAttack(combo, face, ss) {
     if (this.dead) return;
+    if (ss === undefined) ss = !!this.c.ss; // IA: usa Soulshot se tiver
+    if (ss) soulshotFx(this.s, this.spr, this.cls, face || this.face, this.x, this.y, 0.3);
     const s = this.s, a = this.k.attack, cls = this.cls, cfg = ANIM_CFG[cls].attack, now = s.time.now;
     if (face) this.face = face;
     this.combo = combo ?? (now - this.lastAtk < 650 ? (this.combo + 1) % 3 : 0);
@@ -125,7 +127,7 @@ class Rival {
     this.cd = Math.max(a.cooldown * 0.6, hitMs + 60);
     this.action = 'attack'; this.play('attack', true);
     if (this.ground && this.mode === 'ai') this.vx = this.face * MOVE_SPEED * 0.45;
-    const tok = ++this.token, f = this.face, mult = a.mult * (fin ? 1.45 : 1);
+    const tok = ++this.token, f = this.face, mult = a.mult * (fin ? 1.45 : 1) * (ss ? SOULSHOT_MULT : 1);
     s.time.delayedCall(hitMs, () => {
       if (this.dead || this.token !== tok || this.action !== 'attack' || s.state === 'ended') return;
       if (a.kind === 'melee') {
@@ -640,7 +642,7 @@ class ArenaBattleScene extends BattleScene {
   init(data) {
     this.mode = data.mode || 'ai'; this.opp = data.opp; this.ranked = !!data.ranked; this.role = data.role; this.code = data.code;
     // a mesma cena é reaproveitada na revanche: zera o estado da rodada anterior
-    this.started = false; this.myRematch = false; this.otherRematch = false; this.menuUi = null; this.waitTxt = null; this.rmTxt = null; this.ping = 0;
+    this.started = false; this.lastHeard = 0; this.iLeft = false; this.myRematch = false; this.otherRematch = false; this.menuUi = null; this.waitTxt = null; this.rmTxt = null; this.ping = 0;
     this.areaId = 'arena'; this.phase = 1; this.pvp = true; this.netMode = this.mode === 'net'; this.round = data.round || 1;
     this.exitLabel = 'Desistir'; this.exitTo = () => { this.togglePause(); this.finish('lose', 'Você desistiu'); };
   }
@@ -691,6 +693,7 @@ class ArenaBattleScene extends BattleScene {
     this.hpTxt = this.hud(txt(this, 227, 73, '', 16, '#fff', { origin: 0.5 }));
     this.mpBar = this.hud(bar(this, 32, 94, 390, 14, 0x3d7bff));
     this.mpTxt = this.hud(txt(this, 227, 101, '', 12, '#fff', { origin: 0.5 }));
+    this.ssTxt = this.hud(txt(this, 32, 132, '', 15, '#9fdfff', { origin: [0, 0.5] }));
     // adversário (direita)
     this.hud(panel(this, W - 444, 12, 430, 112, 0.8));
     this.hud(txt(this, W - 32, 22, o.name, 24, '#ff9a8a', { title: true, origin: [1, 0] }));
@@ -709,6 +712,7 @@ class ArenaBattleScene extends BattleScene {
     const p = this.p, r = this.rival;
     this.hpBar.set(p.hp / p.maxHp); this.hpTxt.setText(`${Math.max(0, Math.ceil(p.hp))} / ${p.maxHp}`);
     this.mpBar.set(p.mp / 100); this.mpTxt.setText(p.mp >= 100 ? 'ESPECIAL PRONTO!' : `MP ${Math.floor(p.mp)}`);
+    const ssn = this.ssCount(); if (this.ssTxt.text !== (ssn ? `✦ Soulshot x${ssn}` : '')) this.ssTxt.setText(ssn ? `✦ Soulshot x${ssn}` : '');
     this.rHpBar.set(r.hp / r.maxHp); this.rHpTxt.setText(`${Math.max(0, Math.ceil(r.hp))} / ${r.maxHp}`);
     this.rMpBar.set(r.mp / 100);
     const t = Math.max(0, Math.ceil(this.timeLeft));
@@ -810,9 +814,9 @@ class ArenaBattleScene extends BattleScene {
     L(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.45));
     L(panel(this, W / 2 - 200, 220, 400, 260, 0.95));
     L(txt(this, W / 2, 262, 'Duelo', 32, COL.goldTxt, { origin: 0.5, title: true }));
-    L(txt(this, W / 2, 300, '(a luta continua rolando!)', 15, COL.dim, { origin: 0.5 }));
+    L(txt(this, W / 2, 300, '(a luta continua rolando! Sair = empate)', 15, COL.dim, { origin: 0.5 }));
     L(button(this, W / 2, 352, 260, 54, 'Voltar à luta', () => this.togglePause(), { size: 20 }));
-    L(button(this, W / 2, 420, 260, 54, 'Desistir', () => { this.ns('ko'); this.menuUi.forEach(o => o.destroy()); this.menuUi = null; this.finish('lose', 'Você desistiu'); }, { size: 20, color: 0x5a3a12 }));
+    L(button(this, W / 2, 420, 260, 54, 'Sair da luta', () => this.leaveDuel(), { size: 20, color: 0x5a3a12 }));
   }
 
   // ---------------------------------------------------------- REDE (duelo)
@@ -820,7 +824,9 @@ class ArenaBattleScene extends BattleScene {
     const r = this.rival;
     const on = (t, f) => Net.on(t, (d) => { if (d.rd !== undefined && d.rd !== this.round) return; f(d); });
     this.netT = 0; this.pingT = 0; this.ping = 0; this.ready = { me: false, other: false };
-    on('s', (d) => { r.net = Object.assign(d, { at: this.time.now }); });
+    on('s', (d) => { r.net = Object.assign(d, { at: this.time.now }); this.lastHeard = this.time.now; });
+    // alguém saiu da luta (botão Sair, fechou o app ou ficou muito tempo minimizado): EMPATE
+    on('quit', (d) => { if (this.state !== 'ended') this.finish('draw', d.why === 'timeout' ? 'Você ficou muito tempo fora do jogo' : `${this.opp.name} saiu do jogo`); else this.otherLeft(); });
     on('act', (d) => this.remoteAct(d));
     on('hurt', (d) => { if (!r.dead) r.showHurt(d.d, false, Math.sign(r.x - this.p.x) || 1); });
     on('dodge', () => r.showDodge());
@@ -828,7 +834,7 @@ class ArenaBattleScene extends BattleScene {
     on('end', (d) => { const me = this.role === 'host' ? 'host' : 'guest'; this.finish(d.r === 'draw' ? 'draw' : d.r === me ? 'win' : 'lose'); });
     on('ping', (d) => this.ns('pong', { at: d.at }));
     on('pong', (d) => { this.ping = Math.round(performance.now() - d.at); });
-    Net.on('close', () => { if (this.state !== 'ended') this.finish('win', 'O adversário saiu da luta'); else this.otherLeft(); });
+    Net.on('close', () => { if (this.state !== 'ended') this.finish('draw', `${this.opp.name} saiu do jogo`); else this.otherLeft(); });
     on('rematch', () => { this.otherRematch = true; this.tryRematch(); });
     on('ready', () => { this.ready.other = true; this.tryGo(); });
     on('go', () => { if (this.role !== 'host' && this.state === 'intro' && !this.started) { this.started = true; this.countdown(); } });
@@ -843,9 +849,21 @@ class ArenaBattleScene extends BattleScene {
   }
   // 3, 2, 1, LUTEM!
   countdown() { if (this.waitTxt) { this.waitTxt.destroy(); this.waitTxt = null; } this._countdown(); }
+  // sair do duelo: os dois veem EMPATE
+  leaveDuel() {
+    if (this.menuUi) { this.menuUi.forEach(o => o.destroy()); this.menuUi = null; }
+    this.ns('quit'); this.iLeft = true;
+    this.finish('draw', 'Você saiu do jogo');
+    this.time.delayedCall(400, () => Net.close());
+  }
   netTick(delta) {
     this.netT -= delta; this.pingT -= delta;
-    if (this.netT <= 0) { this.netT = 50; this.sendState(); }
+    if (this.netT <= 0 && this.state !== 'ended') { this.netT = 50; this.sendState(); }
+    // o outro parou de mandar notícias (app minimizado / caiu a internet) por 10 s: empate
+    if (this.state === 'play' && this.lastHeard && this.time.now - this.lastHeard > 10000) {
+      this.ns('quit', { why: 'timeout' });
+      this.finish('draw', `${this.opp.name} saiu do jogo`);
+    }
     if (this.pingT <= 0) { this.pingT = 2000; this.ns('ping', { at: performance.now() }); if (this.pingTxt) this.pingTxt.setText(this.ping ? `ping ${this.ping} ms` : ''); }
   }
   sendState() {
@@ -860,7 +878,7 @@ class ArenaBattleScene extends BattleScene {
     const r = this.rival;
     if (this.state !== 'play' || r.dead) return;
     if (d.x !== undefined) { r.x = d.x; r.y = d.y; }
-    if (d.a === 'atk') r.doAttack(d.combo, d.face);
+    if (d.a === 'atk') r.doAttack(d.combo, d.face, !!d.ss);
     else if (d.a === 'sp') r.doSpecial(d.face);
     else if (d.a === 's2') r.doSkill2(d.face);
     else if (d.a === 'dash') r.doDash(d.kind, d.dir);
@@ -876,7 +894,7 @@ class ArenaBattleScene extends BattleScene {
     const p = this.p, r = this.rival;
     if (res === 'lose') this.playerDown(); else p.vx = 0;
     if (res === 'win' && (r.hp <= 0 || ko)) r.die();
-    if (this.netMode) Net.clear(['close', 'rematch', 'ping', 'pong', 's']);
+    if (this.netMode) Net.clear(['close', 'rematch', 'ping', 'pong', 's', 'quit']);
     if (res === 'win') Sfx.win(); else if (res === 'lose') this.time.delayedCall(250, () => Sfx.lose());
     // pontos e ouro (só na Arena ranqueada)
     const c = this.ch; let pts = 0, gold = 0, a = null, lg0 = null, lg1 = null;
@@ -927,7 +945,7 @@ class ArenaBattleScene extends BattleScene {
       }
     });
   }
-  otherLeft() { if (this.rmTxt && this.rmTxt.active) this.rmTxt.setText('O amigo saiu da sala').setColor('#ff8a8a'); }
+  otherLeft() { if (this.iLeft) return; if (this.rmTxt && this.rmTxt.active) this.rmTxt.setText('O amigo saiu da sala').setColor('#ff8a8a'); }
   tryRematch() {
     if (this.state !== 'ended') return;
     if (this.rmTxt && this.rmTxt.active && !this.myRematch) this.rmTxt.setText('O amigo quer revanche!');

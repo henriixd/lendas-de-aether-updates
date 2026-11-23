@@ -143,7 +143,7 @@ function fadeTo(scene, key, data) {
 // ---------- Sons (assets/audio, gerados por tools/synth.py) ----------
 // Sfx.play('nome') toca um efeito; se o arquivo não carregou, cai no bipe sintetizado.
 const SFX_KEYS = ['arrow', 'bash', 'boss_roar', 'click', 'coin', 'dash', 'explosion', 'fire_cast', 'growl', 'hit', 'hit_heavy', 'hurt',
-  'jump', 'land', 'levelup', 'lose', 'monster_die', 'orb', 'roll', 'slam', 'spin', 'spores', 'step', 'swing', 'swing_heavy',
+  'jump', 'land', 'levelup', 'lose', 'monster_die', 'orb', 'roll', 'slam', 'soulshot', 'spin', 'spores', 'step', 'swing', 'swing_heavy',
   'warn', 'warp_in', 'warp_out', 'win'];
 const MUSIC_KEYS = ['forest', 'town', 'boss', 'swamp', 'caves', 'desert'];
 function loadAudio(scene) {
@@ -217,7 +217,7 @@ const Sfx = {
   },
   click() { this.play('click', 0.8, 0.03) || this.tone(660, 0.05, 'triangle', 0.05); },
   swing() { this.play('swing', 0.7) || this.tone(300, 0.1, 'sawtooth', 0.04, -200); },
-  shoot() { this.play('arrow', 0.7) || this.tone(900, 0.07, 'triangle', 0.05, -500); },
+  shoot() { this.play('arrow', 0.85, 0.05) || this.tone(900, 0.07, 'triangle', 0.05, -500); },
   magic() { this.play('orb', 0.6) || this.tone(500, 0.18, 'sine', 0.07, 400); },
   hit() { this.play('hit', 0.8) || this.tone(140, 0.08, 'square', 0.06, -60); },
   hurt() { this.play('hurt', 0.9, 0.04) || this.tone(220, 0.15, 'sawtooth', 0.07, -150); },
@@ -226,6 +226,21 @@ const Sfx = {
   lose() { this.play('lose', 0.8, 0) || [392, 330, 262].forEach((f, i) => setTimeout(() => this.tone(f, 0.25, 'triangle', 0.06), i * 180)); },
   toggle() { Settings.data.sfx = !Settings.data.sfx; Settings.save(); },
 };
+
+// ---------- som em segundo plano: app minimizado / tela bloqueada = silêncio
+// (o app Android também chama AetherBg ao ir para o segundo plano, antes de pausar o jogo)
+window.AetherBg = function (hidden) {
+  const g = window.game;
+  try {
+    const ctx = g && g.sound && g.sound.context;
+    if (ctx) { if (hidden) ctx.suspend(); else ctx.resume(); }
+    if (g && g.sound) g.sound.mute = !!hidden;
+    if (Sfx.ctx) { if (hidden) Sfx.ctx.suspend(); else Sfx.ctx.resume(); }
+  } catch (e) {}
+};
+document.addEventListener('visibilitychange', () => window.AetherBg(document.hidden));
+window.addEventListener('pagehide', () => window.AetherBg(true));
+window.addEventListener('pageshow', () => { if (!document.hidden) window.AetherBg(false); });
 
 // indicador do salvamento na nuvem (☁ Salvo / Salvando / sem internet)
 function cloudBadge(scene, x, y) {

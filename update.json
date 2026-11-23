@@ -1,7 +1,7 @@
 {
- "build": 10,
- "version": "0.5.3",
- "minNative": 1,
- "notes": "Agora a versão do jogo aparece na tela inicial.",
+ "build": 11,
+ "version": "0.5.4",
+ "minNative": 2,
+ "notes": "Som novo da flecha, Soulshot (Loja › Consumíveis), analógico no celular, jogo em silêncio quando minimizado e empate quando alguém sai do duelo.",
  "mandatory": true
 }
