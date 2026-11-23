@@ -1,7 +1,7 @@
 {
- "build": 12,
- "version": "0.5.5",
+ "build": 13,
+ "version": "0.5.6",
  "minNative": 2,
- "notes": "Movimento mais suave: mistura de quadros nas animações, virada suave, respiração, balanço dos passos e monstros que aceleram e freiam.",
+ "notes": "Guerreiro: nova Escudada (atordoa 1 s), armaduras pesadas com 2,5x de defesa, Pele de Ferro (-25% de dano) e mais vida. Flechas e orbes com alcance menor; monstros acertados de longe correm até você.",
  "mandatory": true
 }

@@ -4,7 +4,7 @@
 // ============================================================
 
 const GAME_TITLE = 'Lendas de Aether'; // nome provisório
-const GAME_VERSION = '0.5.5'; // tools/make_update.py atualiza sozinho
+const GAME_VERSION = '0.5.6'; // tools/make_update.py atualiza sozinho
 const SOULSHOT_MULT = 1.25; // Soulshot: +25% de dano no ataque básico (gasta 1 por ataque)
 const DASH_COOLDOWN = 4000; // ms entre um desvio (Espaço) e outro — vale para todas as classes
 const W = 1280, H = 720, GROUND_Y = 590;
@@ -12,11 +12,12 @@ const W = 1280, H = 720, GROUND_Y = 590;
 const CLASSES = {
   warrior: {
     id: 'warrior', name: 'Guerreiro', weapon: 'Espada e Escudo', gearType: 'pesada',
-    desc: 'Linha de frente. Muita vida e defesa, golpes corpo a corpo fortes.',
-    base: { hp: 100, atk: 14, def: 8, crit: 5 },
-    perLevel: { hp: 16, atk: 3, def: 2, crit: 0.3 },
-    attack: { kind: 'melee', range: 150, cooldown: 430, mult: 1.0 },
-    skill: { name: 'Golpe Giratório', mult: 3.0, radius: 230 },
+    desc: 'Linha de frente. Muita vida e defesa (Pele de Ferro: recebe 25% menos dano), golpes corpo a corpo fortes.',
+    base: { hp: 110, atk: 14, def: 10, crit: 5 },
+    perLevel: { hp: 20, atk: 3, def: 3, crit: 0.3 },
+    attack: { kind: 'melee', range: 175, cooldown: 430, mult: 1.0 },
+    skill: { name: 'Escudada', mult: 2.6, stun: 1.0 },
+    dmgTaken: 0.75, // Pele de Ferro
     originX: 0.58, color: 0xc0392b,
   },
   hunter: {
@@ -56,7 +57,7 @@ function rollRarity(bonus = 0) {
 // K = Especial (100 MP) • L = Habilidade (35 MP) • nível 5 = Maestria (passiva)
 const CLASS_SKILLS = {
   warrior: [
-    { lvl: 1, key: 'K', name: 'Golpe Giratório', desc: 'Gira a espada acertando todos ao redor duas vezes. Custa 100 MP.' },
+    { lvl: 1, key: 'K', name: 'Escudada', desc: 'Avança com o escudo e acerta todos à frente: dano alto e deixa atordoado por 1 segundo (chefes também). Custa 100 MP.' },
     { lvl: 3, key: 'L', name: 'Investida de Escudo', desc: 'Avança com o escudo atravessando os inimigos: dano alto e quebra o ataque deles. 35 MP.' },
     { lvl: 5, key: '', name: 'Fúria', desc: 'Passiva: o 3º golpe do combo solta uma onda de choque pelo chão.' },
   ],
@@ -115,14 +116,14 @@ const ITEMS = {
   w_train_sword: { name: 'Espada de Treino', slot: 'arma', type: 'pesada', atk: 4, price: 40, lvl: 1 },
   w_train_bow:   { name: 'Arco de Treino', slot: 'arma', type: 'leve', atk: 4, crit: 1, price: 40, lvl: 1 },
   w_train_staff: { name: 'Cajado de Aprendiz', slot: 'arma', type: 'magica', atk: 5, price: 40, lvl: 1 },
-  a_chain:       { name: 'Cota de Malha', slot: 'armadura', type: 'pesada', def: 4, price: 40, lvl: 1 },
+  a_chain:       { name: 'Cota de Malha', slot: 'armadura', type: 'pesada', def: 10, price: 40, lvl: 1 },
   a_leather:     { name: 'Gibão de Couro', slot: 'armadura', type: 'leve', def: 3, crit: 2, price: 40, lvl: 1 },
   a_robe:        { name: 'Manto de Aprendiz', slot: 'armadura', type: 'magica', def: 2, atk: 1, price: 40, lvl: 1 },
   // ---------- loja
   w_longsword:   { name: 'Espada Longa', slot: 'arma', type: 'pesada', atk: 10, price: 260, lvl: 2, shop: true },
   w_recurve:     { name: 'Arco Recurvo', slot: 'arma', type: 'leve', atk: 9, crit: 3, price: 260, lvl: 2, shop: true },
   w_oakstaff:    { name: 'Cajado de Carvalho', slot: 'arma', type: 'magica', atk: 11, price: 260, lvl: 2, shop: true },
-  a_plate:       { name: 'Armadura de Placas', slot: 'armadura', type: 'pesada', def: 10, hp: 30, price: 300, lvl: 3, shop: true },
+  a_plate:       { name: 'Armadura de Placas', slot: 'armadura', type: 'pesada', def: 25, hp: 30, price: 300, lvl: 3, shop: true },
   a_hardleather: { name: 'Couro Reforçado', slot: 'armadura', type: 'leve', def: 7, hp: 15, crit: 3, price: 300, lvl: 3, shop: true },
   a_arcane:      { name: 'Túnica Arcana', slot: 'armadura', type: 'magica', def: 5, hp: 20, atk: 3, price: 300, lvl: 3, shop: true },
   j_ring_str:    { name: 'Anel de Força', slot: 'joia', type: 'any', atk: 3, price: 180, lvl: 1, shop: true },
@@ -139,7 +140,7 @@ const ITEMS = {
   w_venomblade:  { name: 'Espada Peçonhenta', slot: 'arma', type: 'pesada', atk: 22, crit: 3, price: 700, lvl: 6, drop: 'swamp' },
   w_reedbow:     { name: 'Arco de Junco Negro', slot: 'arma', type: 'leve', atk: 20, crit: 7, price: 700, lvl: 6, drop: 'swamp' },
   w_bogstaff:    { name: 'Cajado do Lodo', slot: 'arma', type: 'magica', atk: 25, price: 700, lvl: 6, drop: 'swamp' },
-  a_scalemail:   { name: 'Cota de Escamas', slot: 'armadura', type: 'pesada', def: 17, hp: 55, price: 650, lvl: 7, drop: 'swamp' },
+  a_scalemail:   { name: 'Cota de Escamas', slot: 'armadura', type: 'pesada', def: 42, hp: 55, price: 650, lvl: 7, drop: 'swamp' },
   a_toadhide:    { name: 'Couro de Sapo', slot: 'armadura', type: 'leve', def: 12, hp: 35, crit: 4, price: 650, lvl: 7, drop: 'swamp' },
   a_mirerobe:    { name: 'Manto do Pântano', slot: 'armadura', type: 'magica', def: 9, hp: 40, atk: 5, price: 650, lvl: 7, drop: 'swamp' },
   j_fang:        { name: 'Presa Venenosa', slot: 'joia', type: 'any', atk: 6, crit: 3, price: 420, lvl: 5, drop: 'swamp' },
@@ -147,7 +148,7 @@ const ITEMS = {
   w_crystalblade:{ name: 'Montante de Quartzo', slot: 'arma', type: 'pesada', atk: 32, crit: 4, price: 1200, lvl: 12, drop: 'caves' },
   w_prismbow:    { name: 'Arco Prismático', slot: 'arma', type: 'leve', atk: 29, crit: 9, price: 1200, lvl: 12, drop: 'caves' },
   w_geodestaff:  { name: 'Cajado de Geodo', slot: 'arma', type: 'magica', atk: 36, crit: 2, price: 1200, lvl: 12, drop: 'caves' },
-  a_golemplate:  { name: 'Couraça de Golem', slot: 'armadura', type: 'pesada', def: 25, hp: 90, price: 1100, lvl: 14, drop: 'caves' },
+  a_golemplate:  { name: 'Couraça de Golem', slot: 'armadura', type: 'pesada', def: 62, hp: 90, price: 1100, lvl: 14, drop: 'caves' },
   a_minervest:   { name: 'Colete do Mineiro', slot: 'armadura', type: 'leve', def: 18, hp: 60, crit: 6, price: 1100, lvl: 14, drop: 'caves' },
   a_gemrobe:     { name: 'Manto de Gemas', slot: 'armadura', type: 'magica', def: 14, hp: 65, atk: 8, price: 1100, lvl: 14, drop: 'caves' },
   j_geode:       { name: 'Anel de Geodo', slot: 'joia', type: 'any', hp: 45, def: 5, crit: 3, price: 800, lvl: 11, drop: 'caves' },
@@ -155,7 +156,7 @@ const ITEMS = {
   w_sunsaber:    { name: 'Sabre do Sol', slot: 'arma', type: 'pesada', atk: 46, crit: 5, price: 2000, lvl: 22, drop: 'desert' },
   w_stingbow:    { name: 'Arco do Ferrão', slot: 'arma', type: 'leve', atk: 42, crit: 12, price: 2000, lvl: 22, drop: 'desert' },
   w_pharaohstaff:{ name: 'Cetro do Faraó', slot: 'arma', type: 'magica', atk: 52, crit: 3, price: 2000, lvl: 22, drop: 'desert' },
-  a_sandplate:   { name: 'Armadura Escarlate', slot: 'armadura', type: 'pesada', def: 36, hp: 140, price: 1900, lvl: 24, drop: 'desert' },
+  a_sandplate:   { name: 'Armadura Escarlate', slot: 'armadura', type: 'pesada', def: 90, hp: 140, price: 1900, lvl: 24, drop: 'desert' },
   a_dunecloak:   { name: 'Capa das Dunas', slot: 'armadura', type: 'leve', def: 26, hp: 95, crit: 8, price: 1900, lvl: 24, drop: 'desert' },
   a_tombrobe:    { name: 'Túnica da Tumba', slot: 'armadura', type: 'magica', def: 20, hp: 100, atk: 12, price: 1900, lvl: 24, drop: 'desert' },
   j_scarab:      { name: 'Escaravelho Dourado', slot: 'joia', type: 'any', atk: 10, crit: 5, hp: 40, price: 1400, lvl: 21, drop: 'desert' },
@@ -163,7 +164,7 @@ const ITEMS = {
   p_dragonblade:   { name: 'Lâmina do Dragão', slot: 'arma', type: 'pesada', atk: 18, crit: 4, price: 900, lvl: 3, premium: true, look: '🔥 Rastro de fogo nos golpes' },
   p_stormbow:      { name: 'Arco da Tempestade', slot: 'arma', type: 'leve', atk: 16, crit: 9, price: 900, lvl: 3, premium: true, look: '⚡ Flechas com raios' },
   p_starstaff:     { name: 'Cajado Estelar', slot: 'arma', type: 'magica', atk: 20, crit: 2, price: 900, lvl: 3, premium: true, look: '✨ Brilho de estrelas no cajado' },
-  p_lionplate:     { name: 'Armadura do Leão', slot: 'armadura', type: 'pesada', def: 13, hp: 50, price: 900, lvl: 4, premium: true, look: '👑 Muda o visual do personagem' },
+  p_lionplate:     { name: 'Armadura do Leão', slot: 'armadura', type: 'pesada', def: 32, hp: 50, price: 900, lvl: 4, premium: true, look: '👑 Muda o visual do personagem' },
   p_shadowcloak:   { name: 'Manto das Sombras', slot: 'armadura', type: 'leve', def: 9, hp: 35, crit: 5, price: 900, lvl: 4, premium: true, look: '👑 Muda o visual do personagem' },
   p_archrobe:      { name: 'Túnica do Arquimago', slot: 'armadura', type: 'magica', def: 7, hp: 35, atk: 5, price: 900, lvl: 4, premium: true, look: '👑 Muda o visual do personagem' },
   p_phoenixamulet: { name: 'Amuleto da Fênix', slot: 'joia', type: 'any', hp: 40, atk: 4, crit: 3, price: 700, lvl: 2, premium: true, look: '🔥 Aura de brasas' },

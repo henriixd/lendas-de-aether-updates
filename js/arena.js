@@ -152,6 +152,7 @@ class Rival {
     if (this.dead) return;
     const s = this.s, cls = this.cls, sk = this.k.skill, cfg = ANIM_CFG[cls].special;
     if (face) this.face = face;
+    if (cls === 'warrior') { this.mp = 0; s.floatText(this.x, this.y - 250, sk.name, '#ff9a8a', 24); this.doDash('shieldbash', this.face); return; } // Escudada
     this.mp = 0; this.action = 'special'; this.token++; this.play('special', true);
     const dur = animDurMs(cls, 'special');
     this.inv = Math.max(this.inv, dur); this.cd = dur;
@@ -233,11 +234,12 @@ class Rival {
       roll: { dur: 360, speed: 940, iframes: 300, cd: 330, color: 0xff9a8a },
       bash: { dur: 260, speed: 1080, iframes: 260, cd: 380, color: 0xffd36b, hover: true },
       charge: { dur: 330, speed: 1180, iframes: 330, cd: 300, color: 0xffb040, hover: air },
+      shieldbash: { dur: 240, speed: 900, iframes: 320, cd: 0, color: 0xfff09a, hover: air },
       airdash: { dur: 230, speed: 1150, iframes: 230, cd: 330, color: 0x9cff8a, hover: true },
       teleport: { dur: 240, dist: 290, iframes: 320, cd: 420, color: 0xc08cff, hover: true },
     }[kind];
     this.dash = { kind, t: 0, ...D, dir, hit: false, ghostT: 0 };
-    if (kind !== 'charge') this.dashCd = DASH_COOLDOWN;
+    if (kind !== 'charge' && kind !== 'shieldbash') this.dashCd = DASH_COOLDOWN;
     this.inv = Math.max(this.inv, D.iframes); this.dodging = true;
     s.time.delayedCall(D.iframes, () => { this.dodging = false; });
     if (D.hover && this.mode === 'ai') this.vy = 0;
@@ -246,7 +248,7 @@ class Rival {
       Sfx.play('roll', 0.6); s.dust(this.x, 6, this.y);
       const rk = `${this.base}_roll`;
       if (hasAnim(rk)) { const mt = ANIM_META[rk]; this.spr.setOrigin(mt.ox, mt.oy); this.baseScale = mt.scale; this.spr.play(rk); }
-    } else if (kind === 'bash' || kind === 'charge') {
+    } else if (kind === 'bash' || kind === 'charge' || kind === 'shieldbash') {
       Sfx.play('dash', 0.6);
       const k = this.ak('attack'), mt = ANIM_META[k]; this.spr.setTexture(k, 2).setOrigin(mt.ox, mt.oy); this.baseScale = mt.scale;
       this.dash.shield = s.add.image(this.x, this.y - 110, 'fx_glow').setTint(0xffd36b).setScale(0.55, 1.05).setAlpha(0.85).setDepth(21).setBlendMode('ADD');
@@ -283,7 +285,13 @@ class Rival {
     } else {
       if (ai) { this.vx = d.dir * d.speed * (1 - k * 0.35); this.vy = 0; }
       if (d.shield) { d.shield.x = this.x + d.dir * 70; d.shield.y = this.y - 110; }
-      if ((d.kind === 'bash' || d.kind === 'charge') && !d.hit && this.nearPlayer(this.halfW + 80, 180, -30)) {
+      if (d.kind === 'shieldbash' && !d.hit && (this.nearPlayer(this.halfW + 90, 200, -30) || d.t >= d.dur - 20)) {
+        d.hit = true; d.t = d.dur; // Escudada: impacto que atordoa
+        Sfx.play('bash', 0.9); Sfx.play('slam', 0.6); s.cameras.main.shake(160, 0.008);
+        const x = this.x + d.dir * 110, ring = s.add.image(x, this.y - 105, 'fx_ring').setTint(0xfff09a).setScale(0.25, 0.4).setDepth(28).setBlendMode('ADD');
+        s.tweens.add({ targets: ring, scaleX: 1.2, scaleY: 1.5, alpha: 0, duration: 320, onComplete: () => ring.destroy() });
+        if (this.nearPlayer(this.halfW + 260, 260) && this.hitPlayer(this.k.skill.mult)) s.freezePlayer(0.8, true);
+      } else if ((d.kind === 'bash' || d.kind === 'charge') && !d.hit && this.nearPlayer(this.halfW + 80, 180, -30)) {
         d.hit = true; this.hitPlayer(d.kind === 'charge' ? 1.7 : 0.7); Sfx.play('bash', 0.8);
       }
     }
@@ -307,7 +315,7 @@ class Rival {
     if (this.dead || s.state !== 'play') return;
     if (this.dodging) { this.showDodge(); return; }
     if (this.inv > 0) return;
-    const taken = Math.max(1, Math.round(dmg * PVP_DMG * (1 - this.st.def / (this.st.def + 150))));
+    const taken = Math.max(1, Math.round(dmg * PVP_DMG * (this.k.dmgTaken || 1) * (1 - this.st.def / (this.st.def + 150))));
     this.hp -= taken; this.inv = 350; this.mp = Math.min(100, this.mp + 4);
     this.showHurt(taken, crit, Math.sign(this.x - s.p.x) || 1, knock, opt.stagger);
     if (this.hp <= 0) { this.hp = 0; s.finish('win'); }
@@ -330,10 +338,10 @@ class Rival {
     }
     s.freeze(crit ? 75 : 45);
   }
-  freeze(secs) {
+  freeze(secs, stun = false) {
     if (this.dead) return;
-    this.frozen = secs; this.spr.anims.pause(); this.spr.setTint(0x9fdfff); this.token++; this.action = null; if (this.dash) this.endDash();
-    Sfx.play('warp_out', 0.4);
+    this.frozen = secs; this.spr.anims.pause(); this.spr.setTint(stun ? 0xfff0a0 : 0x9fdfff); this.token++; this.action = null; if (this.dash) this.endDash();
+    if (stun) this.s.floatText(this.x, this.y - 230, 'ATORDOADO!', '#ffe27a', 22); else Sfx.play('warp_out', 0.4);
   }
   die() {
     if (this.dead) return;
@@ -425,7 +433,7 @@ class Rival {
       if (!this.ground && !d) { const k = Phaser.Math.Clamp(Math.abs(this.vy) / 2600, 0, 0.07); by += k; bx -= k * 0.5; }
       this.spr.x = this.x; this.spr.y = this.y - bob;
       const lean = !d && !this.action ? Phaser.Math.Clamp(this.vx / MOVE_SPEED, -1, 1) * (this.ground ? 3 : 5) : 0;
-      this.spr.angle = d && (d.kind === 'bash' || d.kind === 'airdash' || d.kind === 'charge') ? d.dir * 10 : Phaser.Math.Linear(this.spr.angle, lean, Math.min(1, dt * 14));
+      this.spr.angle = d && (d.kind === 'bash' || d.kind === 'airdash' || d.kind === 'charge' || d.kind === 'shieldbash') ? d.dir * 10 : Phaser.Math.Linear(this.spr.angle, lean, Math.min(1, dt * 14));
       this.spr.setScale(this.baseScale * tv * bx, this.baseScale * by);
       const blink = this.inv > 0 && this.action !== 'special' && !this.dash && this.action === 'hurt';
       this.spr.setAlpha(blink ? (Math.floor(s.time.now / 70) % 2 ? 0.5 : 1) : 1);
@@ -781,17 +789,17 @@ class ArenaBattleScene extends BattleScene {
     }
     m.takeHit(roll, knock, opt);
   }
-  freezeMonster(m, secs) {
-    if (!m.rival) return super.freezeMonster(m, secs);
-    if (!this.netMode) m.freeze(secs * 0.6);
+  freezeMonster(m, secs, stun = false) {
+    if (!m.rival) return super.freezeMonster(m, secs, stun);
+    if (!this.netMode) m.freeze(stun ? 0.8 : secs * 0.6, stun);
   }
-  freezePlayer(secs) {
+  freezePlayer(secs, stun = false) {
     const p = this.p;
     if (p.dead || p.action === 'special') return;
     p.frozen = secs; p.stunUntil = this.time.now + secs * 1000; p.vx = 0;
     if (p.dash) this.endDash();
-    p.action = null; p.spr.anims.pause(); p.spr.setTint(0x9fdfff);
-    this.floatText(p.x, p.y - 230, 'CONGELADO!', '#9fdfff', 22);
+    p.action = null; p.spr.anims.pause(); p.spr.setTint(stun ? 0xfff0a0 : 0x9fdfff);
+    this.floatText(p.x, p.y - 230, stun ? 'ATORDOADO!' : 'CONGELADO!', stun ? '#ffe27a' : '#9fdfff', 22);
   }
   hurtPlayer(dmg, srcX) {
     const p = this.p, hp0 = p.hp, dodge0 = p.lastDodgeT;

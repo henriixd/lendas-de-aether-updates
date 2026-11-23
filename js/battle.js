@@ -562,6 +562,7 @@ class BattleScene extends Phaser.Scene {
       roll:     { dur: 360, speed: 940, iframes: 300, cd: 330, color: cls === 'warrior' ? 0xffd36b : 0x9cff8a },
       bash:     { dur: 260, speed: 1080, iframes: 260, cd: 380, color: 0xffd36b, hover: true },
       charge:   { dur: 330, speed: 1180, iframes: 330, cd: 300, color: 0xffb040, hover: air },
+      shieldbash: { dur: 240, speed: 900, iframes: 320, cd: 0, color: 0xfff09a, hover: air },
       airdash:  { dur: 230, speed: 1150, iframes: 230, cd: 330, color: 0x9cff8a, hover: true },
       teleport: { dur: 240, dist: 290, iframes: 320, cd: 420, color: 0xc08cff, hover: true },
     }[kind];
@@ -569,7 +570,7 @@ class BattleScene extends Phaser.Scene {
     p.turn = dir;
     this.emitAct({ a: 'dash', kind, dir, x: Math.round(p.x), y: Math.round(p.y) });
     // desvio: 4 s de recarga. A Investida de Escudo (habilidade L) não mexe na recarga do desvio
-    if (kind !== 'charge') { p.dashCd = DASH_COOLDOWN; p.dashCdMax = DASH_COOLDOWN; }
+    if (kind !== 'charge' && kind !== 'shieldbash') { p.dashCd = DASH_COOLDOWN; p.dashCdMax = DASH_COOLDOWN; }
     p.inv = Math.max(p.inv, D.iframes); p.dodging = true;
     this.time.delayedCall(D.iframes, () => { p.dodging = false; });
     p.vy = D.hover ? 0 : p.vy;
@@ -590,7 +591,7 @@ class BattleScene extends Phaser.Scene {
         p.spr.setTexture(`${base}_walk`, 2).setOrigin(mt.ox, 0.6);
         p.dash.lift = mt.size * mt.scale * 0.4 * 0.8;
       }
-    } else if (kind === 'bash' || kind === 'charge') {
+    } else if (kind === 'bash' || kind === 'charge' || kind === 'shieldbash') {
       Sfx.play('dash', 0.75);
       const ak = this.ak('attack'), mt = ANIM_META[ak];
       p.spr.setTexture(ak, 2).setOrigin(mt.ox, mt.oy);
@@ -644,14 +645,17 @@ class BattleScene extends Phaser.Scene {
         p.spr.setScale(p.baseScale * 0.82 * d.dir, p.baseScale * 0.82);
       }
       if (!d.sheet && d.ghostT <= 0) { this.ghost(d.color, 0.35); d.ghostT = 45; }
-    } else if (d.kind === 'bash' || d.kind === 'airdash' || d.kind === 'charge') {
+    } else if (d.kind === 'bash' || d.kind === 'airdash' || d.kind === 'charge' || d.kind === 'shieldbash') {
       p.vx = d.dir * d.speed * (1 - k * 0.35); p.vy = 0;
       p.spr.x = p.x; p.spr.y = p.y;
       p.spr.angle = d.dir * (d.kind === 'airdash' ? 14 : 10);
       p.spr.setScale(p.baseScale * d.dir, p.baseScale);
       if (d.ghostT <= 0) { this.ghost(d.color); d.ghostT = 30; }
       if (d.shield) { d.shield.x = p.x + d.dir * 70; d.shield.y = p.y - 110; }
-      if (d.kind === 'bash' || d.kind === 'charge') {
+      if (d.kind === 'shieldbash') { // Escudada: no 1º inimigo à frente (ou no fim do avanço) bate o escudo
+        const near = this.monsters.some(m => m.hp > 0 && (m.x - p.x) * d.dir > -30 && (m.x - p.x) * d.dir < m.halfW + 90 && Math.abs((m.y ?? GROUND_Y) - p.y) < m.height + 40);
+        if (!d.impact && (near || d.t >= d.dur - 20)) { d.impact = true; this.shieldImpact(d.dir); d.t = d.dur; }
+      } else if (d.kind === 'bash' || d.kind === 'charge') {
         // o escudo empurra e machuca quem estiver no caminho
         for (const m of this.monsters) {
           if (d.hit.has(m) || m.hp <= 0) continue;
@@ -772,10 +776,10 @@ class BattleScene extends Phaser.Scene {
           sh.s.setScale(0.3, 0.13).setTint(0xffd36b).setRotation(0); Sfx.play('slam', 0.5);
         }
       } else if (a.kind === 'arrow') {
-        Sfx.shoot(); this.shoot('fx_arrow', fin ? 1600 : 1250, 0, mult, fin, 0, { face, dy: -128, dx: 110, knock: fin ? 45 : 10, scale: fin ? 1.3 : 1 });
-        if (fin && this.ch.level >= 5) for (const ang of [-9, 9]) this.shoot('fx_arrow', 1450, ang, mult * 0.7, true, 0, { face, dy: -128, dx: 110, noAim: true, scale: 1.1 }); // Tiro Triplo
+        Sfx.shoot(); this.shoot('fx_arrow', fin ? 1600 : 1250, 0, mult, fin, 0, { face, dy: -128, dx: 110, knock: fin ? 45 : 10, scale: fin ? 1.3 : 1, life: 0.62 }); // alcance ~800
+        if (fin && this.ch.level >= 5) for (const ang of [-9, 9]) this.shoot('fx_arrow', 1450, ang, mult * 0.7, true, 0, { face, dy: -128, dx: 110, noAim: true, scale: 1.1, life: 0.62 }); // Tiro Triplo
       } else {
-        Sfx.magic(); this.shoot('fx_orb', fin ? 900 : 760, 0, mult, false, fin ? 130 : 80, { face, dy: -138, dx: 105, scale: fin ? 1.45 : 1 });
+        Sfx.magic(); this.shoot('fx_orb', fin ? 900 : 760, 0, mult, false, fin ? 130 : 80, { face, dy: -138, dx: 105, scale: fin ? 1.45 : 1, life: 0.92 }); // alcance ~700
       }
     });
   }
@@ -888,12 +892,33 @@ class BattleScene extends Phaser.Scene {
     for (const m of this.monsters) if (Math.abs(m.x - p.x) < 260) { m.x += Math.sign(m.x - p.x || 1) * 160; m.state = m.state === 'dead' ? 'dead' : 'cool'; m.t = 0.8; }
     Sfx.play('levelup', 0.9, 0);
   }
-  freezeMonster(m, secs) {
+  freezeMonster(m, secs, stun = false) {
     if (m.hp <= 0 || m.state === 'dead') return;
-    m.frozen = secs; this.clearWarn(m);
-    if (m.state === 'windup' || m.state === 'strike' || m.state === 'skill') { m.state = 'cool'; m.t = 0.3; m.yOff = 0; m.skillUpd = null; }
-    m.spr.anims.pause(); m.spr.setTint(0x9fdfff);
-    Sfx.play('warp_out', 0.4);
+    m.frozen = Math.max(m.frozen || 0, secs); m.frozenTint = stun ? 0xfff0a0 : 0x9fdfff; this.clearWarn(m);
+    if (m.state === 'windup' || m.state === 'strike' || m.state === 'skill' || m.state === 'recombo') { m.state = 'cool'; m.t = 0.3; m.yOff = 0; m.skillUpd = null; m.mv = 0; }
+    m.spr.anims.pause(); m.spr.setTint(m.frozenTint);
+    if (stun) { // estrelinhas girando sobre a cabeça
+      if (!m.stunFx) m.stunFx = [0, 1, 2].map(() => this.add.image(m.x, GROUND_Y - m.height, 'ui_star').setDisplaySize(24, 24).setDepth(46));
+    } else Sfx.play('warp_out', 0.4);
+  }
+  stunMonster(m, secs) { this.freezeMonster(m, secs, true); }
+  clearStun(m) { if (m.stunFx) { m.stunFx.forEach(o => o.destroy()); m.stunFx = null; } }
+  // impacto da Escudada: dano alto e atordoa todos à frente por 1 s (chefe final: 0,7 s)
+  shieldImpact(dir) {
+    const p = this.p, sk = this.k.skill;
+    Sfx.play('bash', 1); Sfx.play('slam', 0.7);
+    this.cameras.main.shake(200, 0.011); this.freeze(90);
+    const x = p.x + dir * 110, y = p.y - 105;
+    const ring = this.add.image(x, y, 'fx_ring').setTint(0xfff09a).setScale(0.25, 0.4).setDepth(28).setBlendMode('ADD');
+    this.tweens.add({ targets: ring, scaleX: 1.2, scaleY: 1.5, alpha: 0, duration: 320, onComplete: () => ring.destroy() });
+    this.burst(x, y, 0xffe27a, 14);
+    for (const m of [...this.monsters]) {
+      const dx = (m.x - p.x) * dir;
+      if (m.hp > 0 && dx > -40 && dx < m.halfW + 260 && Math.abs((m.y ?? GROUND_Y) - p.y) < m.height + 60) {
+        this.hitMonster(m, this.rollDmg(sk.mult), 120, { stagger: true });
+        if (m.hp > 0) this.stunMonster(m, m.final ? 0.7 : 1.0);
+      }
+    }
   }
   arcaneBurst(x, y) {
     const fx = this.add.image(x, y - 100, 'fx_ring').setTint(0xc08cff).setScale(0.2).setDepth(27).setBlendMode('ADD');
@@ -904,6 +929,12 @@ class BattleScene extends Phaser.Scene {
     const p = this.p, sk = this.k.skill, cls = this.ch.cls, cfg = ANIM_CFG[cls].special;
     if (p.action === 'special') return;
     if (p.mp < 100) { toast(this, 'MP insuficiente — acerte monstros para carregar', '#9fb4d8'); return; }
+    if (cls === 'warrior') { // Escudada: avança com o escudo e atordoa (1 s) quem estiver na frente
+      if (p.dash) return;
+      p.mp = 0; this.banner(sk.name, '', '#9fe3ff', 700);
+      this.startDash(p.face, 'shieldbash'); Sfx.play('swing_heavy', 0.8);
+      return;
+    }
     p.mp = 0; p.cd = animDurMs(cls, 'special');
     this.emitAct({ a: 'sp', face: p.face });
     p.action = 'special'; this.playAnim('special', true);
@@ -965,12 +996,13 @@ class BattleScene extends Phaser.Scene {
   // ======================================================== DANO
   hitMonster(m, { dmg, crit }, knock, opt = {}) {
     if (m.hp <= 0) return;
+    if (!m.rival && Math.abs(m.x - this.p.x) > 380 && !(m.rage > 0)) { m.rage = 1.8; m.turnT = 1; } // acertado de longe: corre até o jogador
     m.hp -= dmg;
     this.p.mp = Math.min(100, this.p.mp + 7);
     if (crit || opt.stagger) Sfx.play('hit_heavy', 0.9); else Sfx.hit();
     this.floatText(m.x, GROUND_Y - m.height - 10, crit ? `${dmg}!` : `${dmg}`, crit ? '#ffd23f' : '#ffffff', crit ? 34 : 26);
     m.spr.setTintFill(0xffffff);
-    this.time.delayedCall(70, () => { if (m.spr.active) { m.spr.clearTint(); if (m.frozen > 0) m.spr.setTint(0x9fdfff); else if (m.tint) m.spr.setTint(m.tint); } });
+    this.time.delayedCall(70, () => { if (m.spr.active) { m.spr.clearTint(); if (m.frozen > 0) m.spr.setTint(m.frozenTint || 0x9fdfff); else if (m.tint) m.spr.setTint(m.tint); } });
     if (m.state === 'enter') { this.tweens.killTweensOf(m.spr); m.spr.setAlpha(1); m.state = 'cool'; m.t = 0.3; }
     const dir = Math.sign(m.x - this.p.x) || 1;
     const armored = m.state === 'windup' || m.state === 'strike';
@@ -991,6 +1023,7 @@ class BattleScene extends Phaser.Scene {
   killMonster(m) {
     Sfx.play('monster_die', m.boss ? 0.9 : 0.6);
     if (m.sm) m.sm.destroy();
+    this.clearStun(m);
     m.state = 'dead'; this.clearWarn(m); m.yOff = 0;
     if (m.bar) m.bar.destroy();
     // animação de morte, depois some aos poucos
@@ -1018,7 +1051,7 @@ class BattleScene extends Phaser.Scene {
       return false;
     }
     if (p.inv > 0) return false;
-    const taken = Math.max(1, Math.round(dmg * (1 - this.st.def / (this.st.def + 150))));
+    const taken = Math.max(1, Math.round(dmg * (this.k.dmgTaken || 1) * (1 - this.st.def / (this.st.def + 150))));
     p.hp -= taken; p.inv = this.pvp ? 350 : 700; this.stats.dmg += taken;
     Sfx.hurt();
     this.floatText(p.x, p.y - 200, `-${taken}`, '#ff5a5a', 30);
@@ -1058,7 +1091,7 @@ class BattleScene extends Phaser.Scene {
       if (this.state !== 'play' && m.state !== 'enter') { if (m.state !== 'cool') { m.state = 'cool'; this.clearWarn(m); } m.t = Math.max(m.t, 0.3); }
       if (m.frozen > 0) {
         m.frozen -= dt;
-        if (m.frozen <= 0) { m.spr.anims.resume(); m.spr.clearTint(); if (m.tint) m.spr.setTint(m.tint); }
+        if (m.frozen <= 0) { m.spr.anims.resume(); m.spr.clearTint(); if (m.tint) m.spr.setTint(m.tint); this.clearStun(m); }
       }
       switch (m.frozen > 0 ? 'frozen' : m.state) {
         case 'enter': if (m.t <= 0) m.state = 'approach'; moving = true; break;
@@ -1070,7 +1103,7 @@ class BattleScene extends Phaser.Scene {
           m.turnT = 0;
           const reach = m.halfW + ai.reach;
           if (dist > reach) {
-            const sp = m.speed * (dist > reach + 200 ? 1 : 0.75);
+            const sp = m.speed * (dist > reach + 200 ? 1 : 0.75) * (m.rage > 0 ? 1.65 : 1);
             m.want = want * sp; // acelera até essa velocidade (abaixo)
           } else this.monWindup(m);
           break;
@@ -1134,6 +1167,9 @@ class BattleScene extends Phaser.Scene {
       if (m.state !== 'enter') { m.spr.x = m.x; m.spr.y = GROUND_Y + (m.yOff || 0) - bob; m.spr.angle = ai.pounce && m.state === 'strike' ? -m.face * 8 : (moving ? Phaser.Math.Clamp(m.mv / 600, -1, 1) * 3 : 0); }
       m.spr.setScale(m.baseScale * tk * bx, m.baseScale * by);
       m.sm.update(dt);
+      if (m.stunFx) m.stunFx.forEach((st, i) => { const a = this.time.now / 160 + i * 2.09; st.setPosition(m.x + Math.cos(a) * 30, GROUND_Y + (m.yOff || 0) - m.height - 14 + Math.sin(a) * 7).setAngle(a * 40); });
+      // fúria: acertado de longe, o monstro corre até o jogador
+      if (m.rage > 0) { m.rage -= dt; if (moving && Math.random() < 0.4) this.dust(m.x - Math.sign(m.mv) * m.halfW, 1); }
       m.shadow.x = m.x; m.shadow.setScale(1 + (m.yOff || 0) / 300);
       if (m.warn) { m.warn.x = m.x; m.warn.y = GROUND_Y - m.height - 40 + (m.yOff || 0); }
       if (m.bar) {
