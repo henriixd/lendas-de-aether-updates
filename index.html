@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0b0d0a">
+<title>Lendas de Aether</title>
+<style>
+  @font-face{font-family:Cinzel;font-weight:700;src:url(fonts/cinzel-700.woff2) format("woff2")}
+  @font-face{font-family:Nunito;font-weight:800;src:url(fonts/nunito-800.woff2) format("woff2")}
+  @font-face{font-family:Nunito;font-weight:400;src:url(fonts/nunito-400.woff2) format("woff2")}
+  html,body{margin:0;height:100%;background:#0b0d0a;overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
+  #game{position:fixed;inset:0}
+  #rotate{display:none;position:fixed;inset:0;z-index:10;background:#0b0d0a;color:#f2c766;font:700 22px Nunito,sans-serif;
+    align-items:center;justify-content:center;text-align:center;padding:24px}
+  @media (orientation:portrait) and (max-width:900px){#rotate{display:flex}}
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="rotate">↻ Gire o celular para a horizontal</div>
+<script src="lib/phaser.min.js"></script>
+<script src="lib/supabase.js"></script>
+<script src="lib/peerjs.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/data.js"></script>
+<script src="js/save.js"></script>
+<script src="js/cloud.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/anims.js"></script>
+<script src="js/menus.js"></script>
+<script src="js/battle.js"></script>
+<script src="js/net.js"></script>
+<script src="js/arena.js"></script>
+<script src="js/updater.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
