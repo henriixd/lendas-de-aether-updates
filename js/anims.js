@@ -988,3 +988,42 @@ function animDurMs(cls, a) { return Math.round(ANIM_META[`${cls}_${a}`].frames /
 function monsterHitMs(t) { return Math.round(MON_CFG[t].attack.hit / MON_CFG[t].attack.fps * 1000); }
 function monsterAttackMs(t) { const m = ANIM_META[`${t}_attack`]; return Math.round((m ? m.frames : 8) / MON_CFG[t].attack.fps * 1000); }
 function monsterDeathMs(t) { const m = ANIM_META[`${t}_death`]; return Math.round((m ? m.frames : 6) / MON_CFG[t].death * 1000); }
+
+// ============================================================
+//  SUAVIZAÇÃO DOS SPRITES (deixa o movimento menos "robótico")
+//  • mistura de quadros: o quadro anterior some aos poucos por cima do novo
+//    (8 desenhos por animação parecem bem mais fluidos)
+//  • transição entre animações: a pose antiga se dissolve em ~0,1 s
+// ============================================================
+function approachVal(v, target, step) { return v < target ? Math.min(target, v + step) : Math.max(target, v - step); }
+class SpriteSmooth {
+  constructor(scene, spr) {
+    this.spr = spr;
+    this.ghost = scene.add.image(spr.x, spr.y, spr.texture.key, spr.frame.name).setVisible(false);
+    this.last = null; this.t = 1; this.dur = 1; this.a0 = 0;
+  }
+  update(dt) {
+    const spr = this.spr, g = this.ghost;
+    if (!spr.active) { this.destroy(); return; }
+    const key = spr.texture.key, fr = spr.frame.name, L = this.last;
+    if (L && Math.sign(L.sx) !== Math.sign(spr.scaleX)) this.t = this.dur; // virou de lado: sem mistura (ficaria espelhado)
+    else if (L && (L.key !== key || L.fr !== fr)) {
+      const animChange = L.key !== key;
+      g.setTexture(L.key, L.fr).setOrigin(L.ox, L.oy);
+      this.gs = [Math.abs(L.sx), Math.abs(L.sy)];
+      const a = spr.anims.currentAnim, fps = a && spr.anims.isPlaying ? a.frameRate * (spr.anims.timeScale || 1) : 12;
+      this.dur = animChange ? 0.11 : Math.min(0.12, 1 / Math.max(4, fps));
+      this.a0 = animChange ? 0.7 : 0.5; this.t = 0;
+    }
+    this.last = { key, fr, ox: spr.originX, oy: spr.originY, sx: spr.scaleX, sy: spr.scaleY };
+    if (this.t < this.dur && spr.visible && spr.alpha > 0.05 && !spr.isTintFill) {
+      const k = this.gs[1] / (Math.abs(spr.scaleY) || 1); // tamanho da folha anterior em relação à atual (acompanha virada/respiração)
+      g.setVisible(true).setPosition(spr.x, spr.y).setScale(spr.scaleX * k, spr.scaleY * k).setAngle(spr.angle)
+        .setDepth(spr.depth + 0.1).setAlpha(this.a0 * (1 - this.t / this.dur) * spr.alpha);
+      if (spr.tintTopLeft !== 0xffffff) g.setTint(spr.tintTopLeft); else g.clearTint();
+      this.t += dt;
+    } else g.setVisible(false);
+  }
+  hide() { this.t = this.dur; this.ghost.setVisible(false); }
+  destroy() { if (this.ghost) { this.ghost.destroy(); this.ghost = null; } this.update = () => {}; }
+}

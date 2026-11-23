@@ -1,7 +1,7 @@
 {
- "build": 11,
- "version": "0.5.4",
+ "build": 12,
+ "version": "0.5.5",
  "minNative": 2,
- "notes": "Som novo da flecha, Soulshot (Loja › Consumíveis), analógico no celular, jogo em silêncio quando minimizado e empate quando alguém sai do duelo.",
+ "notes": "Movimento mais suave: mistura de quadros nas animações, virada suave, respiração, balanço dos passos e monstros que aceleram e freiam.",
  "mandatory": true
 }

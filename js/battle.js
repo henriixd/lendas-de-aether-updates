@@ -70,6 +70,7 @@ class BattleScene extends Phaser.Scene {
     this.camTarget = this.add.zone(160, H / 2, 1, 1);
     this.cameras.main.setBounds(0, 0, SEG, H);
     this.cameras.main.startFollow(this.camTarget, true, 0.09, 0.09);
+    this.cameras.main.setDeadzone(90, 400); // pequenos movimentos não balançam a câmera
     this.lookAhead = 0;
 
     // ---------- jogador
@@ -92,6 +93,7 @@ class BattleScene extends Phaser.Scene {
     createAnims(this);
     this.animBase = animBaseFor(this.ch);
     p.spr = this.add.sprite(p.x, p.y, this.ak('idle')).setDepth(20);
+    p.sm = new SpriteSmooth(this, p.spr); p.turn = 1;
     p.action = null; p.anim = null;
     this.playAnim('idle');
     p.spr.on('animationcomplete', (anim) => {
@@ -317,6 +319,7 @@ class BattleScene extends Phaser.Scene {
     m.spr = this.add.sprite(x + 120, GROUND_Y, `${type}_walk`).setDepth(15).setAlpha(0);
     m.tint = boss ? (boss.final ? 0xc9a0ff : 0xffc0b0) : null;
     if (m.tint) m.spr.setTint(m.tint);
+    m.sm = new SpriteSmooth(this, m.spr); m.turnK = 1; m.mv = 0; m.breath = Math.random() * 6;
     this.monAnim(m, 'walk');
     m.spr.setScale(m.baseScale, m.baseScale);
     this.tweens.add({ targets: m.spr, x, alpha: 1, duration: 550, ease: 'Quad.out' });
@@ -440,12 +443,21 @@ class BattleScene extends Phaser.Scene {
       // passada acompanha a velocidade
       if (p.anim === 'walk') p.spr.anims.timeScale = this.state === 'transition' ? 1 : Phaser.Math.Clamp(Math.abs(p.vx) / MOVE_SPEED, 0.55, 1.15);
       else if (p.spr.anims.timeScale !== 1) p.spr.anims.timeScale = 1;
-      p.spr.x = p.x; p.spr.y = p.y;
+      // virada suave (~0,08 s) em vez de espelhar de uma vez
+      p.turn = approachVal(p.turn ?? p.face, p.face, dt * 24);
+      const tv = (p.turn < 0 ? -1 : 1) * Math.max(0.18, Math.abs(p.turn));
+      // movimento secundário: respiração parado, balanço dos passos, estica no ar
+      let bx = 1, by = 1, bob = 0;
+      p.breath = (p.breath || 0) + dt;
+      if (p.anim === 'idle' && p.ground) { const b = Math.sin(p.breath * 2.6); by += b * 0.014; bx -= b * 0.007; }
+      if (p.anim === 'walk' && p.ground) { p.stepPh = (p.stepPh || 0) + Math.abs(p.vx) * dt * 0.026; bob = Math.abs(Math.sin(p.stepPh)) * 3; }
+      if (!p.ground) { const k = Phaser.Math.Clamp(Math.abs(p.vy) / 2600, 0, 0.07); by += k; bx -= k * 0.5; }
+      p.spr.x = p.x; p.spr.y = p.y - bob;
       // inclinação: no ar acompanha a subida/queda; correndo, leve inclinação para frente
       const lean = !p.ground ? Phaser.Math.Clamp(p.vx / MOVE_SPEED, -1, 1) * 5 + (p.vy < 0 ? -2 : 3) * p.face
         : (!p.action && moving ? Phaser.Math.Clamp(p.vx / MOVE_SPEED, -1, 1) * 3 : 0);
       p.spr.angle = Phaser.Math.Linear(p.spr.angle, lean, Math.min(1, dt * 14));
-      p.spr.setScale(p.baseScale * p.face * p.sx, p.baseScale * p.sy);
+      p.spr.setScale(p.baseScale * tv * p.sx * bx, p.baseScale * p.sy * by);
       p.spr.setAlpha(p.inv > 0 && p.action !== 'special' ? (Math.floor(time / 70) % 2 ? 0.45 : 1) : 1);
     }
     const fl = this.floorBelow(p.x, p.y);
@@ -459,6 +471,7 @@ class BattleScene extends Phaser.Scene {
     this.updateEnemyShots(dt);
     this.updateHazards(dt);
     this.weaponFx(dt);
+    p.sm.update(dt);
     this.updateHud();
   }
 
@@ -553,6 +566,7 @@ class BattleScene extends Phaser.Scene {
       teleport: { dur: 240, dist: 290, iframes: 320, cd: 420, color: 0xc08cff, hover: true },
     }[kind];
     p.dash = { kind, t: 0, ...D, dir, hit: new Set(), ghostT: 0 };
+    p.turn = dir;
     this.emitAct({ a: 'dash', kind, dir, x: Math.round(p.x), y: Math.round(p.y) });
     // desvio: 4 s de recarga. A Investida de Escudo (habilidade L) não mexe na recarga do desvio
     if (kind !== 'charge') { p.dashCd = DASH_COOLDOWN; p.dashCdMax = DASH_COOLDOWN; }
@@ -976,6 +990,7 @@ class BattleScene extends Phaser.Scene {
   }
   killMonster(m) {
     Sfx.play('monster_die', m.boss ? 0.9 : 0.6);
+    if (m.sm) m.sm.destroy();
     m.state = 'dead'; this.clearWarn(m); m.yOff = 0;
     if (m.bar) m.bar.destroy();
     // animação de morte, depois some aos poucos
@@ -1056,7 +1071,7 @@ class BattleScene extends Phaser.Scene {
           const reach = m.halfW + ai.reach;
           if (dist > reach) {
             const sp = m.speed * (dist > reach + 200 ? 1 : 0.75);
-            m.x += want * sp * dt; moving = true;
+            m.want = want * sp; // acelera até essa velocidade (abaixo)
           } else this.monWindup(m);
           break;
         }
@@ -1097,13 +1112,28 @@ class BattleScene extends Phaser.Scene {
           break;
         case 'cool': if (m.t <= 0) m.state = 'approach'; break;
       }
+      // aceleração / freada suaves (os monstros não arrancam nem param de uma vez)
+      if (m.state === 'approach' || m.state === 'cool' || m.state === 'recover') {
+        m.mv = approachVal(m.mv || 0, m.want || 0, (m.want ? 1700 : 2600) * dt);
+        m.x += m.mv * dt;
+        if (Math.abs(m.mv) > 25) moving = true;
+      } else m.mv = 0;
+      m.want = 0;
       m.x = Phaser.Math.Clamp(m.x, segL + 60, segL + SEG - 60);
       const flinching = m.anim === 'hurt' && m.spr.anims.isPlaying;
       if (!flinching && !(m.frozen > 0) && (m.state === 'approach' || m.state === 'cool' || m.state === 'enter' || (m.state === 'recover' && m.anim === 'hurt'))) this.monAnim(m, moving ? 'walk' : 'idle');
-      if (m.anim === 'walk') m.spr.anims.timeScale = m.fpsMul * Phaser.Math.Clamp(m.speed / m.baseSpeed, 0.8, 1.6);
+      if (m.anim === 'walk') m.spr.anims.timeScale = m.fpsMul * Phaser.Math.Clamp(m.speed / m.baseSpeed, 0.8, 1.6) * (m.state === 'approach' || m.state === 'cool' ? Phaser.Math.Clamp(Math.abs(m.mv) / (m.speed || 1), 0.5, 1) : 1);
       const look = (m.state === 'windup' || m.state === 'strike' || m.state === 'recover' || m.state === 'recombo' || m.state === 'skill') ? m.face : m.look;
-      if (m.state !== 'enter') { m.spr.x = m.x; m.spr.y = GROUND_Y + (m.yOff || 0); m.spr.angle = ai.pounce && m.state === 'strike' ? -m.face * 8 : 0; }
-      m.spr.setScale(m.baseScale * (look > 0 ? -1 : 1), m.baseScale);
+      // respiração parado, balanço ao andar e virada suave
+      m.breath += dt;
+      let bx = 1, by = 1, bob = 0;
+      if (m.anim === 'idle' && !(m.frozen > 0)) { const b = Math.sin(m.breath * 3); by += b * 0.02; bx -= b * 0.01; }
+      if (m.anim === 'walk') bob = Math.abs(Math.sin(m.breath * 9)) * 2.5 * Math.min(1, Math.abs(m.mv) / 120);
+      m.turnK = approachVal(m.turnK, look > 0 ? -1 : 1, dt * 18);
+      const tk = (m.turnK < 0 ? -1 : 1) * Math.max(0.2, Math.abs(m.turnK));
+      if (m.state !== 'enter') { m.spr.x = m.x; m.spr.y = GROUND_Y + (m.yOff || 0) - bob; m.spr.angle = ai.pounce && m.state === 'strike' ? -m.face * 8 : (moving ? Phaser.Math.Clamp(m.mv / 600, -1, 1) * 3 : 0); }
+      m.spr.setScale(m.baseScale * tk * bx, m.baseScale * by);
+      m.sm.update(dt);
       m.shadow.x = m.x; m.shadow.setScale(1 + (m.yOff || 0) / 300);
       if (m.warn) { m.warn.x = m.x; m.warn.y = GROUND_Y - m.height - 40 + (m.yOff || 0); }
       if (m.bar) {

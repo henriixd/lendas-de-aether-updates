@@ -86,6 +86,7 @@ class Rival {
     this.base = animBaseFor(info);
     this.shadow = s.add.ellipse(x, GROUND_Y, 120, 22, 0x000000, 0.45).setDepth(9);
     this.spr = s.add.sprite(x, GROUND_Y, this.ak('idle')).setDepth(19);
+    this.sm = new SpriteSmooth(s, this.spr); this.turn = this.face; this.breath = 0; this.stepPh = 0;
     this.spr.on('animationcomplete', (a) => { if (/_(attack|special|hurt)$/.test(a.key) && this.action !== 'dash') this.action = null; });
     this.tag = txt(s, x, GROUND_Y - 240, info.name, 17, '#ff9a8a', { origin: 0.5 }).setDepth(46);
     this.wfx = premiumWeapon(info) ? { warrior: 0xff5a2a, hunter: 0x7fd8ff, mage: 0xfff1a8 }[info.cls] : null;
@@ -413,16 +414,26 @@ class Rival {
       }
       if (this.anim === 'walk') this.spr.anims.timeScale = Phaser.Math.Clamp(Math.abs(this.vx) / MOVE_SPEED, 0.55, 1.15);
       else if (this.spr.anims.timeScale !== 1) this.spr.anims.timeScale = 1;
-      this.spr.x = this.x; this.spr.y = this.y;
       const d = this.dash;
-      this.spr.angle = d && (d.kind === 'bash' || d.kind === 'airdash' || d.kind === 'charge') ? d.dir * 10 : 0;
-      this.spr.setScale(this.baseScale * this.face, this.baseScale);
+      // virada suave, respiração, passos e esticar no ar (igual ao jogador)
+      this.turn = d ? this.face : approachVal(this.turn, this.face, s.game.loop.delta / 1000 * 24);
+      const tv = (this.turn < 0 ? -1 : 1) * Math.max(0.18, Math.abs(this.turn));
+      const dt = Math.min(0.05, s.game.loop.delta / 1000); this.breath += dt;
+      let bx = 1, by = 1, bob = 0;
+      if (this.anim === 'idle' && this.ground) { const b = Math.sin(this.breath * 2.6); by += b * 0.014; bx -= b * 0.007; }
+      if (this.anim === 'walk' && this.ground) { this.stepPh += Math.abs(this.vx) * dt * 0.026; bob = Math.abs(Math.sin(this.stepPh)) * 3; }
+      if (!this.ground && !d) { const k = Phaser.Math.Clamp(Math.abs(this.vy) / 2600, 0, 0.07); by += k; bx -= k * 0.5; }
+      this.spr.x = this.x; this.spr.y = this.y - bob;
+      const lean = !d && !this.action ? Phaser.Math.Clamp(this.vx / MOVE_SPEED, -1, 1) * (this.ground ? 3 : 5) : 0;
+      this.spr.angle = d && (d.kind === 'bash' || d.kind === 'airdash' || d.kind === 'charge') ? d.dir * 10 : Phaser.Math.Linear(this.spr.angle, lean, Math.min(1, dt * 14));
+      this.spr.setScale(this.baseScale * tv * bx, this.baseScale * by);
       const blink = this.inv > 0 && this.action !== 'special' && !this.dash && this.action === 'hurt';
       this.spr.setAlpha(blink ? (Math.floor(s.time.now / 70) % 2 ? 0.5 : 1) : 1);
     }
     const fl = s.floorBelow(this.x, this.y);
     this.shadow.x = this.x; this.shadow.y = fl; this.shadow.setScale(Math.max(0.3, 1 - (fl - this.y) / 500));
     this.tag.x = this.x; this.tag.y = this.y - 245; this.tag.setVisible(!this.dead);
+    this.sm.update(Math.min(0.05, s.game.loop.delta / 1000));
   }
 
   // ---------------------------------------------------------- IA
@@ -508,7 +519,7 @@ class Rival {
     const kind = this.cls === 'mage' ? 'teleport' : this.ground ? 'roll' : (this.cls === 'warrior' ? 'bash' : 'airdash');
     this.doDash(kind, dir); return true;
   }
-  destroy() { [this.spr, this.shadow, this.tag].forEach(o => o && o.destroy()); }
+  destroy() { this.sm.destroy(); [this.spr, this.shadow, this.tag].forEach(o => o && o.destroy()); }
 }
 
 // ============================================================
@@ -662,6 +673,7 @@ class ArenaBattleScene extends BattleScene {
     this.camTarget = this.add.zone(SEG / 2, H / 2, 1, 1);
     this.cameras.main.setBounds(0, 0, SEG, H);
     this.cameras.main.startFollow(this.camTarget, true, 0.08, 0.08);
+    this.cameras.main.setDeadzone(90, 400);
     this.lookAhead = 0;
     createAnims(this);
     // quem criou a sala começa na esquerda

@@ -4,7 +4,7 @@
 // ============================================================
 
 const GAME_TITLE = 'Lendas de Aether'; // nome provisório
-const GAME_VERSION = '0.5.4'; // tools/make_update.py atualiza sozinho
+const GAME_VERSION = '0.5.5'; // tools/make_update.py atualiza sozinho
 const SOULSHOT_MULT = 1.25; // Soulshot: +25% de dano no ataque básico (gasta 1 por ataque)
 const DASH_COOLDOWN = 4000; // ms entre um desvio (Espaço) e outro — vale para todas as classes
 const W = 1280, H = 720, GROUND_Y = 590;
