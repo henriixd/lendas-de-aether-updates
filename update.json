@@ -1,7 +1,7 @@
 {
- "build": 13,
- "version": "0.5.6",
+ "build": 14,
+ "version": "0.5.7",
  "minNative": 2,
- "notes": "Guerreiro: nova Escudada (atordoa 1 s), armaduras pesadas com 2,5x de defesa, Pele de Ferro (-25% de dano) e mais vida. Flechas e orbes com alcance menor; monstros acertados de longe correm até você.",
+ "notes": "Sangue ao acertar os monstros (pode desligar na pausa), flechas e orbes seguem o inimigo e acertam alvos pequenos, e o analógico some nos menus de fim de luta.",
  "mandatory": true
 }

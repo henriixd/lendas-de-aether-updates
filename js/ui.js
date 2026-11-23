@@ -151,7 +151,7 @@ function loadAudio(scene) {
   for (const k of MUSIC_KEYS) scene.load.audio('mus_' + k, `assets/audio/music_${k}.ogg`);
 }
 const Settings = {
-  data: { sfx: true, music: true },
+  data: { sfx: true, music: true, blood: true },
   load() { try { Object.assign(this.data, JSON.parse(localStorage.getItem('aether_settings') || '{}')); } catch (e) {} },
   save() { try { localStorage.setItem('aether_settings', JSON.stringify(this.data)); } catch (e) {} },
 };

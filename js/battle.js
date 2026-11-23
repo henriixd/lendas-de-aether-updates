@@ -29,6 +29,16 @@ const BOSS_SKILLS = {
 };
 const SKILL_NAMES = { bombs: 'Bombas!', summon: 'Chamou reforços!', charge: 'Investida!', rain: 'Chuva de esporos!', roots: 'Raízes!', leap: 'Salto esmagador!', spears: 'Lanças!' };
 const PLAT_TOP = { plat_forest: 0.17, plat_swamp: 0.23, plat_caves: 0.17, plat_desert: 0.17 }; // onde fica o "chão" da plataforma na imagem
+// cor do "sangue" de cada monstro (gosma, seiva, cristal, pó de osso...)
+const BLOOD = {
+  default: { c: [0xb3121b, 0x8a0d14, 0xd42a2a] },
+  goblin: { c: [0x7a1a10, 0xa32416, 0x5a120a] }, wolf: { c: [0xb3121b, 0x8a0d14, 0xd42a2a] },
+  mushroom: { c: [0xb07aff, 0x8a4fd8, 0xd6b8ff] }, treant: { c: [0x8a6a2a, 0x5f8f2a, 0xa98a4a], big: true },
+  toad: { c: [0x6fae2a, 0x9bd34a, 0x4a7a1a] }, slime: { c: [0x8fd84a, 0x6fbf2a, 0xb8f07a], big: true }, lizard: { c: [0xa3161b, 0x7a0d12, 0xd42a2a] },
+  golem: { c: [0x7fe8ff, 0xb48cff, 0xe0f4ff] }, scorpion: { c: [0xd8a020, 0xb07a10, 0xf0c850] }, skeleton: { c: [0xe8e0c8, 0xbfb59a, 0xffffff] },
+  miner: { c: [0x7a1a10, 0xa32416, 0x5a120a] }, crystal: { c: [0xc0a8ff, 0x9a7aff, 0xe8dcff], big: true },
+  jackal: { c: [0xb3121b, 0x8a0d14, 0xd42a2a] }, raider: { c: [0xa3161b, 0x7a0d12, 0xd42a2a] },
+};
 const MONSTER_H = { goblin: 160, wolf: 135, mushroom: 160, treant: 205, toad: 120, slime: 125, lizard: 185, golem: 205, scorpion: 130, skeleton: 175 };
 // variantes de cor (ex.: Goblin Mineiro) têm folhas próprias, mas lutam como o monstro base
 for (const k in MONSTERS) { const b = MONSTERS[k].base; if (!b) continue;
@@ -153,7 +163,22 @@ class BattleScene extends Phaser.Scene {
   }
 
   // ======================================================== CONTROLES
+  // cria os controles e guarda quais objetos são deles (para esconder nos menus de fim / pausa)
   buildControls() {
+    const before = new Set(this.children.list);
+    this._buildControls();
+    this.ctrlObjs = this.children.list.filter(o => !before.has(o));
+  }
+  // menus por cima: esconde analógico, botões e barra de habilidades (e eles param de receber toques)
+  hideControls() {
+    (this.ctrlObjs || []).forEach(o => { if (!o.active) return; o.setVisible(false); if (o.input) o.input.enabled = false; });
+    if (this.stick) this.stick.id = null;
+    this.held.left = this.held.right = false; this.held.mag = 1; this.atkHeld = this.jumpHeld = false;
+  }
+  showControls() {
+    (this.ctrlObjs || []).forEach(o => { if (!o.active) return; o.setVisible(true); if (o.input) o.input.enabled = true; });
+  }
+  _buildControls() {
     this.keys = this.input.keyboard.addKeys('LEFT,RIGHT,UP,DOWN,A,D,W,S,Q,SPACE,SHIFT,L,C,J,K,X,Z,ESC');
     this.held = { left: false, right: false };
     this.tap = { atk: false, jump: false, skill: false, dash: false };
@@ -776,10 +801,10 @@ class BattleScene extends Phaser.Scene {
           sh.s.setScale(0.3, 0.13).setTint(0xffd36b).setRotation(0); Sfx.play('slam', 0.5);
         }
       } else if (a.kind === 'arrow') {
-        Sfx.shoot(); this.shoot('fx_arrow', fin ? 1600 : 1250, 0, mult, fin, 0, { face, dy: -128, dx: 110, knock: fin ? 45 : 10, scale: fin ? 1.3 : 1, life: 0.62 }); // alcance ~800
-        if (fin && this.ch.level >= 5) for (const ang of [-9, 9]) this.shoot('fx_arrow', 1450, ang, mult * 0.7, true, 0, { face, dy: -128, dx: 110, noAim: true, scale: 1.1, life: 0.62 }); // Tiro Triplo
+        Sfx.shoot(); this.shoot('fx_arrow', fin ? 1600 : 1250, 0, mult, fin, 0, { face, dy: -105, dx: 110, knock: fin ? 45 : 10, scale: fin ? 1.3 : 1, life: 0.62 }); // alcance ~800
+        if (fin && this.ch.level >= 5) for (const ang of [-9, 9]) this.shoot('fx_arrow', 1450, ang, mult * 0.7, true, 0, { face, dy: -105, dx: 110, noAim: true, scale: 1.1, life: 0.62 }); // Tiro Triplo
       } else {
-        Sfx.magic(); this.shoot('fx_orb', fin ? 900 : 760, 0, mult, false, fin ? 130 : 80, { face, dy: -138, dx: 105, scale: fin ? 1.45 : 1, life: 0.92 }); // alcance ~700
+        Sfx.magic(); this.shoot('fx_orb', fin ? 900 : 760, 0, mult, false, fin ? 130 : 80, { face, dy: -112, dx: 105, scale: fin ? 1.45 : 1, life: 0.92 }); // alcance ~700
       }
     });
   }
@@ -802,7 +827,8 @@ class BattleScene extends Phaser.Scene {
     }
     const rad = Phaser.Math.DegToRad(angleDeg);
     const sh = { s, vx: Math.cos(rad) * speed * face, vy: Math.sin(rad) * speed, mult, pierce, splash, hit: new Set(),
-      life: o.life || 1.3, trail: o.trail, knock: o.knock ?? 10, hitR: o.hitR || 0, onHit: o.onHit };
+      life: o.life || 1.3, trail: o.trail, knock: o.knock ?? 10, hitR: Math.max(o.hitR || 0, key === 'fx_ring' ? 0 : 16), onHit: o.onHit,
+      home: key !== 'fx_ring' && !o.noHome && !(o.noAim && angleDeg) }; // segue o inimigo (sobe/desce até a altura dele)
     s.rotation = face > 0 ? rad : -rad;
     if (key === 'fx_orb') { this.tweens.add({ targets: s, scale: (o.scale || 1) * 1.25, duration: 120, yoyo: true, repeat: -1 }); sh.trail = 0xb79bff; }
     if (this.wfx && (key === 'fx_orb' || key === 'fx_arrow')) { sh.trail = this.wfx; s.setTint(this.wfx); } // arma premium
@@ -811,6 +837,7 @@ class BattleScene extends Phaser.Scene {
   }
   updateShots(dt) {
     for (const sh of this.shots) {
+      if (sh.home) this.homeShot(sh, dt);
       sh.s.x += sh.vx * dt; sh.s.y += sh.vy * dt; sh.life -= dt;
       if (sh.trail && Math.random() < 0.6) {
         const d = this.add.image(sh.s.x - Math.sign(sh.vx) * Phaser.Math.Between(0, 40), sh.s.y + Phaser.Math.Between(-14, 14), 'fx_dot').setTint(sh.trail).setScale(0.6).setDepth(24);
@@ -832,6 +859,23 @@ class BattleScene extends Phaser.Scene {
       if (sh.life <= 0) sh.s.destroy();
     }
     this.shots = this.shots.filter(s => s.life > 0);
+  }
+  // o tiro procura o inimigo mais perto à frente e corrige a altura até o meio do corpo dele
+  homeShot(sh, dt) {
+    const dirX = Math.sign(sh.vx) || 1, sx = sh.s.x, sy = sh.s.y;
+    let best = null;
+    for (const m of this.monsters) {
+      if (m.hp <= 0 || m.state === 'dead' || sh.hit.has(m)) continue;
+      const dx = (m.x - sx) * dirX;
+      if (dx < -20 || dx > 900) continue;
+      if (!best || dx < best.dx) best = { m, dx };
+    }
+    if (!best) return;
+    const m = best.m, ty = (m.y ?? GROUND_Y) + (m.yOff || 0) - m.height * 0.5;
+    const want = Phaser.Math.Clamp((ty - sy) * 7, -650, 650);
+    sh.vy += (want - sh.vy) * Math.min(1, dt * 10);
+    const sp = Math.abs(sh.vx), ang = Math.atan2(sh.vy, sp);
+    sh.s.rotation = dirX > 0 ? ang : -ang;
   }
   // ---------- Habilidade da tecla L (nível 3+)
   skill2() {
@@ -1018,6 +1062,7 @@ class BattleScene extends Phaser.Scene {
       if (!m.boss && m.hp > 0 && !(m.frozen > 0) && hasAnim(`${m.type}_hurt`)) { m.anim = null; this.monAnim(m, 'hurt'); }
     }
     this.burst(m.x - dir * m.halfW * 0.5, GROUND_Y - m.height * 0.55, 0xffe3a0, crit ? 10 : 5);
+    this.blood(m.x - dir * m.halfW * 0.3, GROUND_Y - m.height * 0.55, dir, crit || opt.stagger ? 16 : 9, BLOOD[m.type]);
     if (m.hp <= 0) this.killMonster(m);
   }
   killMonster(m) {
@@ -1436,6 +1481,7 @@ class BattleScene extends Phaser.Scene {
   }
   victory() {
     this.state = 'ended';
+    this.hideControls();
     Music.stop(500);
     this.clearHazards();
     const c = this.ch, first = this.phase > (c.progress[this.areaId] || 0);
@@ -1520,6 +1566,7 @@ class BattleScene extends Phaser.Scene {
   }
   defeat() {
     this.state = 'ended';
+    this.hideControls();
     Save.write();
     this.clearHazards();
     this.time.delayedCall(250, () => Sfx.lose());
@@ -1555,18 +1602,20 @@ class BattleScene extends Phaser.Scene {
     this.paused = !this.paused;
     Music.duck(this.paused);
     if (this.paused) this.pauseAt = this.time.now; else this.stats.paused += this.time.now - (this.pauseAt || this.time.now);
+    if (this.paused) this.hideControls(); else this.showControls();
     if (this.paused) {
       this.tweens.pauseAll();
       const L = (o) => { this.hud(o); this.pauseUi.push(o); return o; };
       this.pauseUi = [];
       L(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.6));
-      L(panel(this, W / 2 - 220, 170, 440, 380, 0.95));
-      L(txt(this, W / 2, 220, 'Pausado', 38, COL.goldTxt, { origin: 0.5, title: true }));
-      L(button(this, W / 2, 300, 300, 60, 'Continuar', () => this.togglePause(), { size: 22 }));
-      const lbl = () => [`Música: ${Settings.data.music ? 'Sim' : 'Não'}`, `Efeitos: ${Settings.data.sfx ? 'Sim' : 'Não'}`];
-      const bm = L(button(this, W / 2 - 77, 375, 146, 56, lbl()[0], () => { Music.toggle(); bm.label.setText(lbl()[0]); }, { size: 17 }));
-      const bs = L(button(this, W / 2 + 77, 375, 146, 56, lbl()[1], () => { Sfx.toggle(); bs.label.setText(lbl()[1]); }, { size: 17 }));
-      L(button(this, W / 2, 455, 300, 60, this.exitLabel || 'Sair da fase', () => { if (this.exitTo) return this.exitTo(); this.paused = false; this.tweens.resumeAll(); fadeTo(this, 'Map', { area: this.areaId }); }, { size: 22 }));
+      L(panel(this, W / 2 - 220, 150, 440, 450, 0.95));
+      L(txt(this, W / 2, 200, 'Pausado', 38, COL.goldTxt, { origin: 0.5, title: true }));
+      L(button(this, W / 2, 275, 300, 60, 'Continuar', () => this.togglePause(), { size: 22 }));
+      const lbl = () => [`Música: ${Settings.data.music ? 'Sim' : 'Não'}`, `Efeitos: ${Settings.data.sfx ? 'Sim' : 'Não'}`, `Sangue: ${Settings.data.blood ? 'Sim' : 'Não'}`];
+      const bm = L(button(this, W / 2 - 77, 350, 146, 56, lbl()[0], () => { Music.toggle(); bm.label.setText(lbl()[0]); }, { size: 17 }));
+      const bs = L(button(this, W / 2 + 77, 350, 146, 56, lbl()[1], () => { Sfx.toggle(); bs.label.setText(lbl()[1]); }, { size: 17 }));
+      const bb = L(button(this, W / 2, 420, 300, 56, lbl()[2], () => { Settings.data.blood = !Settings.data.blood; Settings.save(); bb.label.setText(lbl()[2]); }, { size: 17 }));
+      L(button(this, W / 2, 510, 300, 60, this.exitLabel || 'Sair da fase', () => { if (this.exitTo) return this.exitTo(); this.paused = false; this.tweens.resumeAll(); fadeTo(this, 'Map', { area: this.areaId }); }, { size: 22 }));
     } else {
       this.tweens.resumeAll();
       (this.pauseUi || []).forEach(o => o.destroy());
@@ -1596,6 +1645,23 @@ class BattleScene extends Phaser.Scene {
   floatText(x, y, str, color, size) {
     const t = txt(this, x + Phaser.Math.Between(-15, 15), y, str, size, color, { origin: 0.5 }).setDepth(60);
     this.tweens.add({ targets: t, y: y - 60, alpha: 0, duration: 750, ease: 'Quad.out', onComplete: () => t.destroy() });
+  }
+  // sangue (ou seiva / gosma / cristais, conforme o monstro) espirrando para o lado do golpe e manchando o chão
+  blood(x, y, dir, n, col = BLOOD.default) {
+    if (!Settings.data.blood) return;
+    const em = this.add.particles(x, y, 'fx_dot', {
+      speed: { min: 160, max: 420 }, angle: dir > 0 ? { min: -70, max: 15 } : { min: 165, max: 250 },
+      gravityY: 1500, lifespan: { min: 420, max: 760 }, scale: { start: col.big ? 1.25 : 1.0, end: 0.3 },
+      tint: col.c, alpha: { start: 1, end: 0.7 }, emitting: false,
+    }).setDepth(41);
+    em.explode(n);
+    this.time.delayedCall(800, () => em.destroy());
+    // manchinhas no chão
+    for (let i = 0; i < Math.min(3, Math.ceil(n / 5)); i++) {
+      const gx = x + dir * Phaser.Math.Between(20, 120), w = Phaser.Math.Between(16, 34);
+      const sp = this.add.ellipse(gx, GROUND_Y - 2, w, w * 0.32, col.c[0], 0.75).setDepth(8);
+      this.tweens.add({ targets: sp, alpha: 0, delay: 900, duration: 900, onComplete: () => sp.destroy() });
+    }
   }
   burst(x, y, color, n) {
     for (let i = 0; i < n; i++) {

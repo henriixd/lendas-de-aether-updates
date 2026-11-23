@@ -328,6 +328,7 @@ class Rival {
   showHurt(taken, crit, dir, knock = 30, heavy = false) {
     const s = this.s;
     if (crit || heavy) Sfx.play('hit_heavy', 0.8); else Sfx.hit();
+    s.blood(this.x - dir * 20, this.y - 110, dir, crit || heavy ? 14 : 8);
     if (taken) s.floatText(this.x, this.y - 220, crit ? `${taken}!` : `${taken}`, crit ? '#ffd23f' : '#ffffff', crit ? 32 : 26);
     this.spr.setTintFill(0xffffff); s.time.delayedCall(70, () => { if (this.spr.active) { this.spr.clearTint(); if (this.frozen > 0) this.spr.setTint(0x9fdfff); } });
     s.burst(this.x - dir * 20, this.y - 110, 0xffe3a0, crit ? 10 : 5);
@@ -828,7 +829,8 @@ class ArenaBattleScene extends BattleScene {
   togglePause() {
     if (!this.netMode) return super.togglePause();
     if (this.state === 'ended') return;
-    if (this.menuUi) { this.menuUi.forEach(o => o.destroy()); this.menuUi = null; return; }
+    if (this.menuUi) { this.menuUi.forEach(o => o.destroy()); this.menuUi = null; this.showControls(); return; }
+    this.hideControls();
     const L = (o) => { this.hud(o); this.menuUi.push(o); return o; };
     this.menuUi = [];
     L(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.45));
@@ -909,6 +911,7 @@ class ArenaBattleScene extends BattleScene {
     if (this.state === 'ended') return;
     const wasPlay = this.state;
     this.state = 'ended';
+    this.hideControls();
     if (this.menuUi) { this.menuUi.forEach(o => o.destroy()); this.menuUi = null; }
     Music.stop(500); this.clearHazards();
     const p = this.p, r = this.rival;
