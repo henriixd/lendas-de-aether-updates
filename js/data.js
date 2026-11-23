@@ -4,6 +4,7 @@
 // ============================================================
 
 const GAME_TITLE = 'Lendas de Aether'; // nome provisório
+const GAME_VERSION = '0.5.3'; // tools/make_update.py atualiza sozinho
 const DASH_COOLDOWN = 4000; // ms entre um desvio (Espaço) e outro — vale para todas as classes
 const W = 1280, H = 720, GROUND_Y = 590;
 

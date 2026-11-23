@@ -1,7 +1,7 @@
 {
- "build": 9,
- "version": "0.5.2",
+ "build": 10,
+ "version": "0.5.3",
  "minNative": 1,
- "notes": "Desvio (Espaço) com 4 s de recarga e atualização automática pelo app.",
+ "notes": "Agora a versão do jogo aparece na tela inicial.",
  "mandatory": true
 }

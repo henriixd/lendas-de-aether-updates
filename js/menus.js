@@ -76,6 +76,7 @@ class TitleScene extends Phaser.Scene {
     bgForest(this, 0.25);
     this.add.rectangle(W / 2, 0, W, 300, 0x000000, 0.35).setOrigin(0.5, 0);
     Updater.check(this); // versão nova no servidor? (só no app Android / PC)
+    txt(this, W / 2, H - 10, `v${GAME_VERSION}`, 14, '#cfc4a8', { origin: [0.5, 1], bold: false }).setAlpha(0.75).setDepth(950);
     // trio de heróis
     [['warrior_art', 300, 1.08], ['hunter_art', 650, 1.12], ['mage_art', 975, 1.04]].forEach(([k, x, sc], i) => {
       const im = this.add.image(x, H + 6, k).setOrigin(0.5, 1).setScale(sc);
