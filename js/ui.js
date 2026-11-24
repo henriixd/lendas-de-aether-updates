@@ -145,7 +145,7 @@ function fadeTo(scene, key, data) {
 const SFX_KEYS = ['arrow', 'bash', 'boss_roar', 'click', 'coin', 'dash', 'explosion', 'fire_cast', 'growl', 'hit', 'hit_heavy', 'hurt',
   'jump', 'land', 'levelup', 'lose', 'monster_die', 'orb', 'roll', 'slam', 'soulshot', 'spin', 'spores', 'step', 'swing', 'swing_heavy',
   'warn', 'warp_in', 'warp_out', 'win'];
-const MUSIC_KEYS = ['forest', 'town', 'boss', 'swamp', 'caves', 'desert'];
+const MUSIC_KEYS = ['forest', 'town', 'boss', 'swamp', 'caves', 'desert', 'peaks', 'citadel', 'abyss'];
 function loadAudio(scene) {
   for (const k of SFX_KEYS) scene.load.audio('sfx_' + k, `assets/audio/${k}.ogg`);
   for (const k of MUSIC_KEYS) scene.load.audio('mus_' + k, `assets/audio/music_${k}.ogg`);

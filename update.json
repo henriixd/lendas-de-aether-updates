@@ -1,7 +1,7 @@
 {
- "build": 14,
- "version": "0.5.7",
+ "build": 15,
+ "version": "0.5.8",
  "minNative": 2,
- "notes": "Sangue ao acertar os monstros (pode desligar na pausa), flechas e orbes seguem o inimigo e acertam alvos pequenos, e o analógico some nos menus de fim de luta.",
+ "notes": "3 áreas novas: Picos Gelados (nv 30–40), Cidadela Infernal (40–50) e Abismo do Vazio (50–60), com 12 monstros, chefes e itens novos. Nível máximo agora é 60. Poção de Vida à venda na Loja › Consumíveis.",
  "mandatory": true
 }

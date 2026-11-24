@@ -28,6 +28,86 @@ const ANIM_META = {
   "oy": 1,
   "w": 233
  },
+ "demonknight_attack": {
+  "frames": 8,
+  "size": 280,
+  "scale": 0.86,
+  "ox": 0.495,
+  "oy": 1.0,
+  "w": 245
+ },
+ "demonknight_death": {
+  "frames": 8,
+  "size": 280,
+  "scale": 0.86,
+  "ox": 0.495,
+  "oy": 1.0,
+  "w": 245
+ },
+ "demonknight_walk": {
+  "frames": 8,
+  "size": 280,
+  "scale": 0.86,
+  "ox": 0.495,
+  "oy": 1,
+  "w": 245
+ },
+ "frostbones_attack": {
+  "frames": 8,
+  "size": 268,
+  "scale": 0.764,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 235
+ },
+ "frostbones_death": {
+  "frames": 8,
+  "size": 268,
+  "scale": 0.764,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 235
+ },
+ "frostbones_walk": {
+  "frames": 8,
+  "size": 268,
+  "scale": 0.764,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 235
+ },
+ "frostwolf_attack": {
+  "frames": 8,
+  "size": 256,
+  "scale": 0.808,
+  "ox": 0.495,
+  "oy": 1.0,
+  "w": 240
+ },
+ "frostwolf_death": {
+  "frames": 8,
+  "size": 256,
+  "scale": 0.808,
+  "ox": 0.494,
+  "oy": 1.0,
+  "w": 240
+ },
+ "frostwolf_hurt": {
+  "frames": 6,
+  "size": 272,
+  "scale": 0.813,
+  "ox": 0.496,
+  "oy": 0.996,
+  "w": 239
+ },
+ "frostwolf_walk": {
+  "frames": 8,
+  "size": 256,
+  "scale": 0.813,
+  "ox": 0.494,
+  "oy": 0.996,
+  "w": 241
+ },
  "goblin_attack": {
   "frames": 8,
   "size": 218,
@@ -83,6 +163,38 @@ const ANIM_META = {
   "ox": 0.498,
   "oy": 1.0,
   "w": 235
+ },
+ "hellhound_attack": {
+  "frames": 8,
+  "size": 256,
+  "scale": 0.808,
+  "ox": 0.495,
+  "oy": 1.0,
+  "w": 240
+ },
+ "hellhound_death": {
+  "frames": 8,
+  "size": 256,
+  "scale": 0.808,
+  "ox": 0.494,
+  "oy": 1.0,
+  "w": 240
+ },
+ "hellhound_hurt": {
+  "frames": 6,
+  "size": 272,
+  "scale": 0.813,
+  "ox": 0.496,
+  "oy": 0.996,
+  "w": 239
+ },
+ "hellhound_walk": {
+  "frames": 8,
+  "size": 256,
+  "scale": 0.813,
+  "ox": 0.494,
+  "oy": 0.996,
+  "w": 241
  },
  "hunter_attack": {
   "frames": 8,
@@ -259,6 +371,62 @@ const ANIM_META = {
   "ox": 0.431,
   "oy": 1.0,
   "w": 204
+ },
+ "icegolem_attack": {
+  "frames": 8,
+  "size": 268,
+  "scale": 0.88,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 235
+ },
+ "icegolem_death": {
+  "frames": 8,
+  "size": 268,
+  "scale": 0.88,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 235
+ },
+ "icegolem_walk": {
+  "frames": 8,
+  "size": 268,
+  "scale": 0.88,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 235
+ },
+ "imp_attack": {
+  "frames": 8,
+  "size": 218,
+  "scale": 0.941,
+  "ox": 0.558,
+  "oy": 1.0,
+  "w": 168
+ },
+ "imp_death": {
+  "frames": 8,
+  "size": 226,
+  "scale": 0.947,
+  "ox": 0.554,
+  "oy": 0.996,
+  "w": 168
+ },
+ "imp_hurt": {
+  "frames": 6,
+  "size": 194,
+  "scale": 0.941,
+  "ox": 0.561,
+  "oy": 1.0,
+  "w": 167
+ },
+ "imp_walk": {
+  "frames": 8,
+  "size": 194,
+  "scale": 0.941,
+  "ox": 0.561,
+  "oy": 1.0,
+  "w": 168
  },
  "jackal_attack": {
   "frames": 8,
@@ -492,6 +660,30 @@ const ANIM_META = {
   "oy": 1.0,
   "w": 247
  },
+ "magmagolem_attack": {
+  "frames": 8,
+  "size": 268,
+  "scale": 0.88,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 235
+ },
+ "magmagolem_death": {
+  "frames": 8,
+  "size": 268,
+  "scale": 0.88,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 235
+ },
+ "magmagolem_walk": {
+  "frames": 8,
+  "size": 268,
+  "scale": 0.88,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 235
+ },
  "miner_attack": {
   "frames": 8,
   "size": 218,
@@ -652,6 +844,38 @@ const ANIM_META = {
   "oy": 1,
   "w": 233
  },
+ "snowgoblin_attack": {
+  "frames": 8,
+  "size": 218,
+  "scale": 0.941,
+  "ox": 0.558,
+  "oy": 1.0,
+  "w": 168
+ },
+ "snowgoblin_death": {
+  "frames": 8,
+  "size": 226,
+  "scale": 0.947,
+  "ox": 0.554,
+  "oy": 0.996,
+  "w": 168
+ },
+ "snowgoblin_hurt": {
+  "frames": 6,
+  "size": 194,
+  "scale": 0.941,
+  "ox": 0.561,
+  "oy": 1.0,
+  "w": 167
+ },
+ "snowgoblin_walk": {
+  "frames": 8,
+  "size": 194,
+  "scale": 0.941,
+  "ox": 0.561,
+  "oy": 1.0,
+  "w": 168
+ },
  "toad_attack": {
   "frames": 8,
   "size": 264,
@@ -693,6 +917,86 @@ const ANIM_META = {
   "w": 178
  },
  "treant_walk": {
+  "frames": 8,
+  "size": 256,
+  "scale": 0.884,
+  "ox": 0.464,
+  "oy": 1.0,
+  "w": 178
+ },
+ "voidscorp_attack": {
+  "frames": 8,
+  "size": 260,
+  "scale": 0.66,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 227
+ },
+ "voidscorp_death": {
+  "frames": 8,
+  "size": 260,
+  "scale": 0.66,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 227
+ },
+ "voidscorp_walk": {
+  "frames": 8,
+  "size": 260,
+  "scale": 0.66,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 227
+ },
+ "voidshroom_attack": {
+  "frames": 8,
+  "size": 256,
+  "scale": 0.684,
+  "ox": 0.517,
+  "oy": 1.0,
+  "w": 178
+ },
+ "voidshroom_death": {
+  "frames": 8,
+  "size": 256,
+  "scale": 0.684,
+  "ox": 0.517,
+  "oy": 1.0,
+  "w": 178
+ },
+ "voidshroom_hurt": {
+  "frames": 6,
+  "size": 266,
+  "scale": 0.684,
+  "ox": 0.518,
+  "oy": 1.0,
+  "w": 178
+ },
+ "voidshroom_walk": {
+  "frames": 8,
+  "size": 256,
+  "scale": 0.684,
+  "ox": 0.517,
+  "oy": 1.0,
+  "w": 178
+ },
+ "voidtreant_attack": {
+  "frames": 8,
+  "size": 256,
+  "scale": 0.884,
+  "ox": 0.464,
+  "oy": 1.0,
+  "w": 178
+ },
+ "voidtreant_death": {
+  "frames": 8,
+  "size": 256,
+  "scale": 0.884,
+  "ox": 0.464,
+  "oy": 1.0,
+  "w": 178
+ },
+ "voidtreant_walk": {
   "frames": 8,
   "size": 256,
   "scale": 0.884,
@@ -907,6 +1211,30 @@ const ANIM_META = {
   "ox": 0.494,
   "oy": 0.996,
   "w": 241
+ },
+ "wraith_attack": {
+  "frames": 8,
+  "size": 268,
+  "scale": 0.764,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 235
+ },
+ "wraith_death": {
+  "frames": 8,
+  "size": 268,
+  "scale": 0.764,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 235
+ },
+ "wraith_walk": {
+  "frames": 8,
+  "size": 268,
+  "scale": 0.764,
+  "ox": 0.498,
+  "oy": 1.0,
+  "w": 235
  },
  "fireball": {
   "frames": 8,

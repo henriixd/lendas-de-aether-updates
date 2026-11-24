@@ -26,7 +26,7 @@ class BootScene extends Phaser.Scene {
     this.load.image('plat_forest', 'assets/plat_forest.png');
     this.load.image('plat_swamp', 'assets/plat_swamp.png');
     this.load.image('arena', 'assets/arena.jpg');
-    for (const k of ['caves', 'desert']) { this.load.image(k, `assets/${k}.jpg`); this.load.image('plat_' + k, `assets/plat_${k}.png`); }
+    for (const k of ['caves', 'desert', 'peaks', 'citadel', 'abyss']) { this.load.image(k, `assets/${k}.jpg`); this.load.image('plat_' + k, `assets/plat_${k}.png`); }
     for (const k of ['warrior', 'hunter', 'mage']) {
       this.load.image(k, `assets/${k}.png`); this.load.image(k + '_art', `assets/${k}_art.png`); this.load.image(k + '_f_art', `assets/${k}_f_art.png`);
     }
@@ -413,6 +413,15 @@ const ITEM_ICON = {
   w_sunsaber: [null, 'icon_sword_red', true], w_stingbow: ['slot_green', 'icon_bow'], w_pharaohstaff: ['slot_purple', 'icon_staff'],
   a_sandplate: ['slot_red', 'icon_shield'], a_dunecloak: ['slot_green', 'icon_leather'], a_tombrobe: ['slot_purple', 'icon_robe'],
   j_scarab: ['slot_gold', 'icon_amulet'],
+  w_frostbrand: ['slot_blue', 'icon_sword_green'], w_frostbow: ['slot_blue', 'icon_bow2'], w_icestaff: ['slot_blue', 'icon_staff'],
+  a_frostplate: ['slot_blue', 'icon_plate'], a_furcoat: ['slot_blue', 'icon_leather'], a_snowrobe: ['slot_blue', 'icon_robe'],
+  j_frostgem: ['slot_blue', 'icon_diamond'],
+  w_hellblade: [null, 'icon_sword_red', true], w_emberbow: ['slot_red', 'icon_bow'], w_demonstaff: ['slot_red', 'icon_staff'],
+  a_demonplate: ['slot_red', 'icon_shield'], a_ashcloak: ['slot_red', 'icon_leather'], a_flamerobe: ['slot_red', 'icon_robe'],
+  j_hellheart: ['slot_red', 'icon_amulet'],
+  w_voidblade: ['slot_purple', 'icon_sword_green'], w_eclipsebow: ['slot_purple', 'icon_bow2'], w_voidstaff: ['slot_purple', 'icon_staff'],
+  a_voidplate: ['slot_purple', 'icon_plate'], a_wraithcloak: ['slot_purple', 'icon_leather'], a_eclipserobe: ['slot_purple', 'icon_robe'],
+  j_voideye: ['slot_purple', 'icon_skull'],
 };
 const TYPE_TXT = (t) => '#' + TYPE_COLOR[t].toString(16).padStart(6, '0');
 
@@ -634,7 +643,7 @@ class MapScene extends Phaser.Scene {
     AREAS.forEach((a, i) => {
       const unlocked = isOpen(a), sel = a.id === area.id;
       const sub = `Nível ${a.minLvl}–${a.maxLvl}${a.ready ? '' : ' • em breve'}`;
-      const b = button(this, 198, 136 + i * 86, 288, 74, a.name, () => { if (!sel) this.scene.restart({ area: a.id }); }, {
+      const b = button(this, 198, 124 + i * 73, 288, 64, a.name, () => { if (!sel) this.scene.restart({ area: a.id }); }, {
         size: 20, sub, skin: unlocked ? (sel ? 'area_sel' : 'area_dark') : 'area_lock', textX: unlocked ? 0 : 16, disabled: !unlocked,
         onLocked: () => toast(this, a.ready ? `Requer nível ${a.minLvl}` : `${a.name} chega na próxima atualização`, COL.red),
       });

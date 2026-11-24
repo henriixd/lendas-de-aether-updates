@@ -28,7 +28,8 @@ const BOSS_SKILLS = {
   golem: ['leap', 'spears'], scorpion: ['charge', 'rain'], skeleton: ['summon', 'bombs'],
 };
 const SKILL_NAMES = { bombs: 'Bombas!', summon: 'Chamou reforços!', charge: 'Investida!', rain: 'Chuva de esporos!', roots: 'Raízes!', leap: 'Salto esmagador!', spears: 'Lanças!' };
-const PLAT_TOP = { plat_forest: 0.17, plat_swamp: 0.23, plat_caves: 0.17, plat_desert: 0.17 }; // onde fica o "chão" da plataforma na imagem
+const PLAT_TOP = { plat_forest: 0.17, plat_swamp: 0.23, plat_caves: 0.17, plat_desert: 0.17,
+  plat_peaks: 0.17, plat_citadel: 0.17, plat_abyss: 0.23 }; // onde fica o "chão" da plataforma na imagem
 // cor do "sangue" de cada monstro (gosma, seiva, cristal, pó de osso...)
 const BLOOD = {
   default: { c: [0xb3121b, 0x8a0d14, 0xd42a2a] },
@@ -38,6 +39,13 @@ const BLOOD = {
   golem: { c: [0x7fe8ff, 0xb48cff, 0xe0f4ff] }, scorpion: { c: [0xd8a020, 0xb07a10, 0xf0c850] }, skeleton: { c: [0xe8e0c8, 0xbfb59a, 0xffffff] },
   miner: { c: [0x7a1a10, 0xa32416, 0x5a120a] }, crystal: { c: [0xc0a8ff, 0x9a7aff, 0xe8dcff], big: true },
   jackal: { c: [0xb3121b, 0x8a0d14, 0xd42a2a] }, raider: { c: [0xa3161b, 0x7a0d12, 0xd42a2a] },
+  // Picos Gelados: lascas de gelo · Cidadela: sangue escuro e brasa · Abismo: gosma roxa
+  snowgoblin: { c: [0x9fd8ff, 0xd8f0ff, 0x6fb0e8] }, frostwolf: { c: [0x9fd8ff, 0xd8f0ff, 0x6fb0e8] },
+  icegolem: { c: [0xbfe8ff, 0xffffff, 0x8fc8f0] }, frostbones: { c: [0xd8f0ff, 0xffffff, 0xa8d0f0] },
+  imp: { c: [0x8a0d14, 0xff6a20, 0x5a0808] }, hellhound: { c: [0x8a0d14, 0xff6a20, 0x5a0808] },
+  demonknight: { c: [0x7a0a10, 0xd42a2a, 0xff8a3c] }, magmagolem: { c: [0xff6a20, 0xffc040, 0x8a1a08], big: true },
+  voidscorp: { c: [0xb060ff, 0x7a30d8, 0xf0a0ff] }, voidtreant: { c: [0x8040d0, 0xc080ff, 0x4a1a80], big: true },
+  voidshroom: { c: [0x40e0d0, 0x20a0a8, 0xa0fff0] }, wraith: { c: [0xc080ff, 0xffffff, 0x8040ff] },
 };
 const MONSTER_H = { goblin: 160, wolf: 135, mushroom: 160, treant: 205, toad: 120, slime: 125, lizard: 185, golem: 205, scorpion: 130, skeleton: 175 };
 // variantes de cor (ex.: Goblin Mineiro) têm folhas próprias, mas lutam como o monstro base
@@ -72,9 +80,9 @@ class BattleScene extends Phaser.Scene {
     // escurece a floresta ("sombria") e vinheta
     this.add.rectangle(SEG * this.segments.length / 2, H / 2, SEG * this.segments.length, H, area.fog, 0.28);
     this.add.particles(0, 0, 'fx_dot', {
-      x: { min: 0, max: SEG * this.segments.length }, y: area.rising ? H + 10 : -10, lifespan: 9000, speedY: area.rising ? { min: -45, max: -20 } : { min: 25, max: 60 },
+      x: { min: 0, max: SEG * this.segments.length }, y: area.rising ? H + 10 : -10, lifespan: 9000, speedY: area.rising ? { min: -45, max: -20 } : area.snow ? { min: 40, max: 95 } : { min: 25, max: 60 },
       speedX: { min: -30, max: 30 }, scale: { min: 0.25, max: 0.6 }, tint: area.leaves,
-      alpha: { start: 0.8, end: 0.2 }, frequency: 180, rotate: { min: 0, max: 360 },
+      alpha: { start: 0.8, end: 0.2 }, frequency: area.snow ? 70 : 180, rotate: { min: 0, max: 360 },
     }).setDepth(50);
     // câmera: segue o personagem com suavidade e olha um pouco à frente
     this.camTarget = this.add.zone(160, H / 2, 1, 1);
@@ -914,7 +922,7 @@ class BattleScene extends Phaser.Scene {
     if (p.potCd > 0 || p.dead) return;
     if (this.pvp) return toast(this, 'Sem poções na Arena', COL.dim);
     if (this.potUsed >= POTION_LIMIT) return toast(this, `Máximo de ${POTION_LIMIT} poções por fase`, COL.red);
-    if (!countItem(this.ch, 'c_potion')) return toast(this, 'Sem Poções de Vida — compre na Loja Premium', '#9fb4d8');
+    if (!countItem(this.ch, 'c_potion')) return toast(this, 'Sem Poções de Vida — compre na Loja (Consumíveis)', '#9fb4d8');
     if (p.hp >= p.maxHp) return toast(this, 'Vida cheia', COL.dim);
     takeItem(this.ch, 'c_potion'); this.potUsed++; p.potCd = 1500; Save.write();
     const heal = Math.round(p.maxHp * 0.4); p.hp = Math.min(p.maxHp, p.hp + heal);

@@ -4,7 +4,7 @@
 // ============================================================
 
 const GAME_TITLE = 'Lendas de Aether'; // nome provisório
-const GAME_VERSION = '0.5.7'; // tools/make_update.py atualiza sozinho
+const GAME_VERSION = '0.5.8'; // tools/make_update.py atualiza sozinho
 const SOULSHOT_MULT = 1.25; // Soulshot: +25% de dano no ataque básico (gasta 1 por ataque)
 const DASH_COOLDOWN = 4000; // ms entre um desvio (Espaço) e outro — vale para todas as classes
 const W = 1280, H = 720, GROUND_Y = 590;
@@ -160,6 +160,30 @@ const ITEMS = {
   a_dunecloak:   { name: 'Capa das Dunas', slot: 'armadura', type: 'leve', def: 26, hp: 95, crit: 8, price: 1900, lvl: 24, drop: 'desert' },
   a_tombrobe:    { name: 'Túnica da Tumba', slot: 'armadura', type: 'magica', def: 20, hp: 100, atk: 12, price: 1900, lvl: 24, drop: 'desert' },
   j_scarab:      { name: 'Escaravelho Dourado', slot: 'joia', type: 'any', atk: 10, crit: 5, hp: 40, price: 1400, lvl: 21, drop: 'desert' },
+  // ---------- drops dos Picos Gelados (nível 30+)
+  w_frostbrand:  { name: 'Espada Glacial', slot: 'arma', type: 'pesada', atk: 64, crit: 6, price: 3000, lvl: 32, drop: 'peaks' },
+  w_frostbow:    { name: 'Arco da Nevasca', slot: 'arma', type: 'leve', atk: 58, crit: 14, price: 3000, lvl: 32, drop: 'peaks' },
+  w_icestaff:    { name: 'Cajado do Inverno', slot: 'arma', type: 'magica', atk: 72, crit: 4, price: 3000, lvl: 32, drop: 'peaks' },
+  a_frostplate:  { name: 'Armadura Glacial', slot: 'armadura', type: 'pesada', def: 125, hp: 195, price: 2800, lvl: 34, drop: 'peaks' },
+  a_furcoat:     { name: 'Casaco de Pele de Lobo', slot: 'armadura', type: 'leve', def: 36, hp: 135, crit: 10, price: 2800, lvl: 34, drop: 'peaks' },
+  a_snowrobe:    { name: 'Manto da Nevasca', slot: 'armadura', type: 'magica', def: 28, hp: 140, atk: 17, price: 2800, lvl: 34, drop: 'peaks' },
+  j_frostgem:    { name: 'Lágrima de Gelo', slot: 'joia', type: 'any', atk: 14, crit: 6, hp: 58, price: 2100, lvl: 31, drop: 'peaks' },
+  // ---------- drops da Cidadela Infernal (nível 40+)
+  w_hellblade:   { name: 'Lâmina Infernal', slot: 'arma', type: 'pesada', atk: 86, crit: 7, price: 4500, lvl: 42, drop: 'citadel' },
+  w_emberbow:    { name: 'Arco de Brasa', slot: 'arma', type: 'leve', atk: 78, crit: 16, price: 4500, lvl: 42, drop: 'citadel' },
+  w_demonstaff:  { name: 'Cetro Demoníaco', slot: 'arma', type: 'magica', atk: 97, crit: 5, price: 4500, lvl: 42, drop: 'citadel' },
+  a_demonplate:  { name: 'Couraça Demoníaca', slot: 'armadura', type: 'pesada', def: 165, hp: 260, price: 4200, lvl: 44, drop: 'citadel' },
+  a_ashcloak:    { name: 'Capa de Cinzas', slot: 'armadura', type: 'leve', def: 48, hp: 180, crit: 12, price: 4200, lvl: 44, drop: 'citadel' },
+  a_flamerobe:   { name: 'Túnica das Chamas', slot: 'armadura', type: 'magica', def: 37, hp: 190, atk: 23, price: 4200, lvl: 44, drop: 'citadel' },
+  j_hellheart:   { name: 'Coração de Magma', slot: 'joia', type: 'any', atk: 19, crit: 7, hp: 78, price: 3200, lvl: 41, drop: 'citadel' },
+  // ---------- drops do Abismo do Vazio (nível 50+)
+  w_voidblade:   { name: 'Espada do Vazio', slot: 'arma', type: 'pesada', atk: 112, crit: 8, price: 6500, lvl: 52, drop: 'abyss' },
+  w_eclipsebow:  { name: 'Arco do Eclipse', slot: 'arma', type: 'leve', atk: 102, crit: 18, price: 6500, lvl: 52, drop: 'abyss' },
+  w_voidstaff:   { name: 'Cajado do Abismo', slot: 'arma', type: 'magica', atk: 126, crit: 6, price: 6500, lvl: 52, drop: 'abyss' },
+  a_voidplate:   { name: 'Armadura do Abismo', slot: 'armadura', type: 'pesada', def: 210, hp: 340, price: 6000, lvl: 54, drop: 'abyss' },
+  a_wraithcloak: { name: 'Manto Espectral', slot: 'armadura', type: 'leve', def: 62, hp: 235, crit: 14, price: 6000, lvl: 54, drop: 'abyss' },
+  a_eclipserobe: { name: 'Túnica do Eclipse', slot: 'armadura', type: 'magica', def: 48, hp: 245, atk: 30, price: 6000, lvl: 54, drop: 'abyss' },
+  j_voideye:     { name: 'Olho do Vazio', slot: 'joia', type: 'any', atk: 25, crit: 8, hp: 100, price: 4600, lvl: 51, drop: 'abyss' },
   // ---------- Loja Premium (diamantes): já vêm Épicos e encantados +3
   p_dragonblade:   { name: 'Lâmina do Dragão', slot: 'arma', type: 'pesada', atk: 18, crit: 4, price: 900, lvl: 3, premium: true, look: '🔥 Rastro de fogo nos golpes' },
   p_stormbow:      { name: 'Arco da Tempestade', slot: 'arma', type: 'leve', atk: 16, crit: 9, price: 900, lvl: 3, premium: true, look: '⚡ Flechas com raios' },
@@ -171,7 +195,7 @@ const ITEMS = {
   // ---------- consumíveis
   c_soulshot: { name: 'Soulshot', slot: 'consumivel', type: 'any', price: 100, lvl: 1, shop: true, shopQty: 100, use: 'auto',
     info: '100 cargas. Cada ataque gasta 1: +25% de dano e pó mágico na arma (automático).' },
-  c_potion:  { name: 'Poção de Vida', slot: 'consumivel', type: 'any', price: 60, lvl: 1, use: 'battle', info: 'Na batalha (tecla Q ou botão da poção): recupera 40% da vida. Até 3 por fase.' },
+  c_potion:  { name: 'Poção de Vida', slot: 'consumivel', type: 'any', price: 60, lvl: 1, shop: true, use: 'battle', info: 'Na batalha (tecla Q ou botão da poção): recupera 40% da vida. Até 3 por fase.' },
   c_phoenix: { name: 'Pena da Fênix', slot: 'consumivel', type: 'any', price: 200, lvl: 1, use: 'auto', info: 'Se você cair na batalha, revive na hora com 50% da vida (gasta 1 pena).' },
   s_blessed: { name: 'Pergaminho Abençoado', slot: 'pergaminho', type: 'any', price: 240, lvl: 1, info: 'Encanta o item equipado: +1 nível com 100% de sucesso (até +10).' },
   c_xp:      { name: 'Elixir da Sabedoria', slot: 'consumivel', type: 'any', price: 150, lvl: 1, use: 'bag', info: 'Use na mochila: EXP em dobro nas próximas 3 fases vencidas.' },
@@ -195,8 +219,12 @@ const AREAS = [
     fog: 0x080a18, leaves: [0x7fe8ff, 0xb48cff, 0xe0f4ff], plat: 'plat_caves', rising: true },
   { id: 'desert', name: 'Deserto Escarlate', minLvl: 20, maxLvl: 30, phases: 10, bg: 'desert', tint: 0xe0d0c8, ready: true, tier: 30, music: 'desert',
     fog: 0x1a0c06, leaves: [0xe0a060, 0xc87a40, 0xf0c890], plat: 'plat_desert' },
-  { id: 'peaks',  name: 'Picos Gelados', minLvl: 31, maxLvl: 40, phases: 10 },
-  { id: 'citadel',name: 'Cidadela Infernal', minLvl: 41, maxLvl: 50, phases: 10 },
+  { id: 'peaks',  name: 'Picos Gelados', minLvl: 30, maxLvl: 40, phases: 10, bg: 'peaks', tint: 0xe4ecf4, ready: true, tier: 40, music: 'peaks',
+    fog: 0x0a1424, leaves: [0xffffff, 0xe4f2ff, 0xc8e0f8], plat: 'plat_peaks', snow: true },          // neve caindo
+  { id: 'citadel',name: 'Cidadela Infernal', minLvl: 40, maxLvl: 50, phases: 10, bg: 'citadel', tint: 0xe8d8d0, ready: true, tier: 50, music: 'citadel',
+    fog: 0x1a0604, leaves: [0xff8a3c, 0xffc040, 0xff4020], plat: 'plat_citadel', rising: true },       // brasas subindo
+  { id: 'abyss',  name: 'Abismo do Vazio', minLvl: 50, maxLvl: 60, phases: 10, bg: 'abyss', tint: 0xe0d4e8, ready: true, tier: 60, music: 'abyss',
+    fog: 0x0e0618, leaves: [0xc080ff, 0xff80e0, 0x8040ff], plat: 'plat_abyss', rising: true },
 ];
 const areaById = (id) => AREAS.find(a => a.id === id) || AREAS[0];
 
@@ -219,6 +247,21 @@ const MONSTERS = {
   skeleton: { name: 'Esqueleto Guerreiro', key: 'm_skeleton', speed: 235, range: 115, scale: 1, hpMul: 1.0, dmgMul: 1.15 },
   jackal:   { name: 'Chacal das Dunas', base: 'wolf', speed: 330, range: 105, scale: 1, hpMul: 0.9, dmgMul: 1.15 },
   raider:   { name: 'Saqueador das Areias', base: 'lizard', speed: 245, range: 140, scale: 1, hpMul: 1.2, dmgMul: 1.2 },
+  // Picos Gelados (um pouco mais fortes que o normal: +10% vida, +25% dano)
+  snowgoblin: { name: 'Goblin das Neves', base: 'goblin', speed: 245, range: 95, scale: 1, hpMul: 1.1, dmgMul: 1.25 },
+  frostwolf:  { name: 'Lobo da Nevasca', base: 'wolf', speed: 335, range: 105, scale: 1, hpMul: 0.95, dmgMul: 1.4 },
+  icegolem:   { name: 'Golem de Gelo', base: 'golem', speed: 150, range: 125, scale: 1, hpMul: 1.75, dmgMul: 1.5 },
+  frostbones: { name: 'Esqueleto Congelado', base: 'skeleton', speed: 240, range: 115, scale: 1, hpMul: 1.1, dmgMul: 1.45 },
+  // Cidadela Infernal (+20% vida, +50% dano)
+  imp:         { name: 'Diabrete', base: 'goblin', speed: 270, range: 95, scale: 1, hpMul: 1.2, dmgMul: 1.5 },
+  hellhound:   { name: 'Cão Infernal', base: 'wolf', speed: 345, range: 105, scale: 1, hpMul: 1.0, dmgMul: 1.65 },
+  demonknight: { name: 'Cavaleiro Demoníaco', base: 'lizard', speed: 250, range: 140, scale: 1, hpMul: 1.4, dmgMul: 1.7 },
+  magmagolem:  { name: 'Golem de Magma', base: 'golem', speed: 155, range: 125, scale: 1, hpMul: 1.9, dmgMul: 1.8 },
+  // Abismo do Vazio (+30% vida, +75% dano)
+  voidscorp:  { name: 'Escorpião do Vazio', base: 'scorpion', speed: 280, range: 130, scale: 1, hpMul: 1.45, dmgMul: 2.1 },
+  voidtreant: { name: 'Árvore Corrompida', base: 'treant', speed: 140, range: 120, scale: 1, hpMul: 1.95, dmgMul: 2.0 },
+  voidshroom: { name: 'Fungo Abissal', base: 'mushroom', speed: 180, range: 95, scale: 1, hpMul: 1.6, dmgMul: 1.75 },
+  wraith:     { name: 'Cavaleiro Espectral', base: 'skeleton', speed: 250, range: 115, scale: 1, hpMul: 1.3, dmgMul: 2.0 },
 };
 
 // Composição de cada fase: [trecho 1, trecho 2, chefe]. Cada trecho é a lista de monstros que aparecem juntos.
@@ -270,7 +313,44 @@ const DESERT_PHASES = [
   /* 9 */ { screens: [['skeleton', 'raider', 'skeleton'], ['scorpion', 'scorpion', 'jackal']], boss: { type: 'skeleton', name: 'Faraó Esquecido' } },
   /*10 */ { screens: [['raider', 'scorpion', 'jackal'], ['skeleton', 'scorpion', 'raider']], boss: { type: 'scorpion', name: 'Rei Escorpião', final: true } },
 ];
-const PHASES = { forest: FOREST_PHASES, swamp: SWAMP_PHASES, caves: CAVES_PHASES, desert: DESERT_PHASES };
+const PEAKS_PHASES = [
+  /* 1 */ { screens: [['snowgoblin'], ['frostwolf']], boss: { type: 'snowgoblin', name: 'Chefe da Tribo Gelada' } },
+  /* 2 */ { screens: [['frostwolf', 'snowgoblin'], ['frostbones']], boss: { type: 'frostwolf', name: 'Lobo Branco' } },
+  /* 3 */ { screens: [['frostbones', 'snowgoblin'], ['icegolem']], boss: { type: 'frostbones', name: 'Sentinela Congelado' } },
+  /* 4 */ { screens: [['icegolem'], ['frostwolf', 'frostwolf']], boss: { type: 'icegolem', name: 'Golem da Avalanche' } },
+  /* 5 */ { screens: [['snowgoblin', 'frostbones'], ['icegolem', 'snowgoblin']], boss: { type: 'snowgoblin', name: 'Xamã das Neves' } },
+  /* 6 */ { screens: [['frostwolf', 'frostbones'], ['icegolem', 'frostwolf']], boss: { type: 'frostbones', name: 'Rei Sem Calor' } },
+  /* 7 */ { screens: [['icegolem', 'snowgoblin'], ['frostbones', 'frostwolf', 'snowgoblin']], boss: { type: 'frostwolf', name: 'Matilha da Nevasca' } },
+  /* 8 */ { screens: [['frostbones', 'icegolem', 'frostwolf'], ['snowgoblin', 'icegolem']], boss: { type: 'icegolem', name: 'Colosso de Gelo Eterno' } },
+  /* 9 */ { screens: [['frostwolf', 'frostwolf', 'snowgoblin'], ['icegolem', 'frostbones', 'frostbones']], boss: { type: 'frostbones', name: 'Lorde do Inverno' } },
+  /*10 */ { screens: [['icegolem', 'frostbones', 'frostwolf'], ['icegolem', 'icegolem', 'snowgoblin']], boss: { type: 'icegolem', name: 'Titã dos Picos', final: true } },
+];
+const CITADEL_PHASES = [
+  /* 1 */ { screens: [['imp'], ['hellhound']], boss: { type: 'imp', name: 'Diabrete Chefe' } },
+  /* 2 */ { screens: [['imp', 'imp'], ['demonknight']], boss: { type: 'hellhound', name: 'Cérbero Jovem' } },
+  /* 3 */ { screens: [['hellhound', 'imp'], ['magmagolem']], boss: { type: 'demonknight', name: 'Guarda do Portão' } },
+  /* 4 */ { screens: [['demonknight'], ['imp', 'hellhound']], boss: { type: 'magmagolem', name: 'Fornalha Viva' } },
+  /* 5 */ { screens: [['magmagolem', 'imp'], ['demonknight', 'hellhound']], boss: { type: 'imp', name: 'Arquidiabrete' } },
+  /* 6 */ { screens: [['hellhound', 'hellhound'], ['demonknight', 'magmagolem']], boss: { type: 'hellhound', name: 'Cão do Abismo de Fogo' } },
+  /* 7 */ { screens: [['demonknight', 'imp', 'demonknight'], ['magmagolem', 'hellhound']], boss: { type: 'demonknight', name: 'Comandante Demoníaco' } },
+  /* 8 */ { screens: [['magmagolem', 'hellhound', 'imp'], ['demonknight', 'magmagolem']], boss: { type: 'magmagolem', name: 'Golem do Vulcão' } },
+  /* 9 */ { screens: [['demonknight', 'demonknight', 'hellhound'], ['magmagolem', 'imp', 'imp']], boss: { type: 'hellhound', name: 'Cérbero' } },
+  /*10 */ { screens: [['magmagolem', 'demonknight', 'hellhound'], ['demonknight', 'magmagolem', 'imp']], boss: { type: 'demonknight', name: 'Senhor da Cidadela', final: true } },
+];
+const ABYSS_PHASES = [
+  /* 1 */ { screens: [['voidshroom'], ['wraith']], boss: { type: 'voidshroom', name: 'Esporo do Vazio' } },
+  /* 2 */ { screens: [['wraith', 'voidshroom'], ['voidscorp']], boss: { type: 'wraith', name: 'Cavaleiro Perdido' } },
+  /* 3 */ { screens: [['voidscorp', 'wraith'], ['voidtreant']], boss: { type: 'voidscorp', name: 'Ferrão Sombrio' } },
+  /* 4 */ { screens: [['voidtreant'], ['voidshroom', 'voidscorp']], boss: { type: 'voidtreant', name: 'Raiz do Esquecimento' } },
+  /* 5 */ { screens: [['wraith', 'wraith'], ['voidtreant', 'voidshroom']], boss: { type: 'wraith', name: 'Lorde Espectral' } },
+  /* 6 */ { screens: [['voidscorp', 'voidshroom'], ['wraith', 'voidtreant']], boss: { type: 'voidshroom', name: 'Mãe dos Fungos' } },
+  /* 7 */ { screens: [['voidtreant', 'wraith', 'voidscorp'], ['voidshroom', 'wraith']], boss: { type: 'voidscorp', name: 'Rainha Escorpião do Vazio' } },
+  /* 8 */ { screens: [['wraith', 'voidscorp', 'voidshroom'], ['voidtreant', 'voidtreant']], boss: { type: 'voidtreant', name: 'Árvore do Fim' } },
+  /* 9 */ { screens: [['voidscorp', 'voidscorp', 'wraith'], ['voidtreant', 'voidshroom', 'wraith']], boss: { type: 'wraith', name: 'Rei dos Espectros' } },
+  /*10 */ { screens: [['voidtreant', 'wraith', 'voidscorp'], ['wraith', 'voidscorp', 'voidtreant']], boss: { type: 'voidscorp', name: 'Devorador do Vazio', final: true } },
+];
+const PHASES = { forest: FOREST_PHASES, swamp: SWAMP_PHASES, caves: CAVES_PHASES, desert: DESERT_PHASES,
+  peaks: PEAKS_PHASES, citadel: CITADEL_PHASES, abyss: ABYSS_PHASES };
 
 // Status do monstro. "phase" já é a fase global (tier da área + fase). Fase 1: 10 de dano por golpe.
 function monsterStats(phase, typeId, isBoss) {
@@ -294,8 +374,11 @@ function phaseRewards(phase, area = 'forest') {
   if (area === 'swamp') return { xp: 180 + 16 * phase, gold: 60 + 10 * phase };
   if (area === 'caves') return { xp: 800 + 60 * phase, gold: 150 + 20 * phase };   // soma ≈ 11300 (nível 10 → ~17)
   if (area === 'desert') return { xp: 1700 + 120 * phase, gold: 300 + 30 * phase }; // soma ≈ 23600 (nível 20 → ~27)
+  if (area === 'peaks') return { xp: 2600 + 180 * phase, gold: 420 + 40 * phase };   // soma ≈ 35900 (nível 30 → ~38)
+  if (area === 'citadel') return { xp: 3300 + 220 * phase, gold: 560 + 50 * phase }; // soma ≈ 45100 (nível 40 → ~48)
+  if (area === 'abyss') return { xp: 4000 + 280 * phase, gold: 720 + 60 * phase };   // soma ≈ 55400 (nível 50 → ~58)
   return { xp: 40 + 6 * phase, gold: 20 + 6 * phase };
 }
 // estrelas: 1 por vencer, +1 por pouco dano, +1 por terminar rápido
-function parTime(phase, area = 'forest') { return Math.round(55 + phase * 6 + ({ swamp: 20, caves: 30, desert: 40 }[area] || 0)); }
-const MAX_LEVEL = 50;
+function parTime(phase, area = 'forest') { return Math.round(55 + phase * 6 + ({ swamp: 20, caves: 30, desert: 40, peaks: 45, citadel: 50, abyss: 55 }[area] || 0)); }
+const MAX_LEVEL = 60;
