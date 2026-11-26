@@ -1,7 +1,7 @@
 {
- "build": 16,
- "version": "0.5.9",
+ "build": 17,
+ "version": "0.6.0",
  "minNative": 2,
- "notes": "O jogo agora se chama Lendas de Eldrin!",
+ "notes": "Novas habilidades no nível 8 (tecla I): Muralha de Escudo (Guerreiro), Salto Evasivo (Caçador) e Nova Gélida (Mago)!",
  "mandatory": true
 }

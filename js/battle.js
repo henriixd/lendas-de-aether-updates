@@ -104,7 +104,7 @@ class BattleScene extends Phaser.Scene {
   makePlayer(x0) {
     const p = this.p = {
       x: x0, y: GROUND_Y, vx: 0, vy: 0, face: 1, ground: true, hp: this.st.hp, maxHp: this.st.hp,
-      mp: 0, cd: 0, inv: 0, busy: 0, walkT: 0, kvx: 0, sx: 1, sy: 1, plat: null, dropT: 0, cd2: 0, potCd: 0, combo: 0, lastAtk: 0, cancelAt: 0, hurtAt: 0, dashCd: 0, airDash: 1, coyote: 0, bJump: 0, bDash: 0, bAtk: 0, dash: null,
+      mp: 0, cd: 0, inv: 0, busy: 0, walkT: 0, kvx: 0, sx: 1, sy: 1, plat: null, dropT: 0, cd2: 0, cd3: 0, cd3Max: 1, slowT: 0, slowMul: 1, guard: null, potCd: 0, combo: 0, lastAtk: 0, cancelAt: 0, hurtAt: 0, dashCd: 0, airDash: 1, coyote: 0, bJump: 0, bDash: 0, bAtk: 0, dash: null,
     };
     p.shadow = this.add.ellipse(p.x, GROUND_Y, 120, 22, 0x000000, 0.45).setDepth(9);
     // sprite animado (parado/andar/ataque/dano/especial gerados no SpriteCook)
@@ -187,9 +187,9 @@ class BattleScene extends Phaser.Scene {
     (this.ctrlObjs || []).forEach(o => { if (!o.active) return; o.setVisible(true); if (o.input) o.input.enabled = true; });
   }
   _buildControls() {
-    this.keys = this.input.keyboard.addKeys('LEFT,RIGHT,UP,DOWN,A,D,W,S,Q,SPACE,SHIFT,L,C,J,K,X,Z,ESC');
+    this.keys = this.input.keyboard.addKeys('LEFT,RIGHT,UP,DOWN,A,D,W,S,Q,SPACE,SHIFT,L,C,I,V,J,K,X,Z,ESC');
     this.held = { left: false, right: false };
-    this.tap = { atk: false, jump: false, skill: false, dash: false };
+    this.tap = { atk: false, jump: false, skill: false, dash: false, skill3: false };
     const mk = (x, y, r, label, onDown, onUp, size = 30) => {
       const c = this.add.container(x, y).setScrollFactor(0).setDepth(1100);
       const g = this.add.graphics().fillStyle(0x000000, 0.35).fillCircle(0, 0, r).lineStyle(3, 0xffffff, 0.45).strokeCircle(0, 0, r);
@@ -210,15 +210,17 @@ class BattleScene extends Phaser.Scene {
       k: () => ({ ready: p.mp >= 100, fill: Math.min(1, p.mp / 100), glow: p.mp >= 100 }),
       l: () => lvl < sk[1].lvl ? { locked: true } : (p.cd2 > 0 ? { ready: false, fill: 1 - p.cd2 / 900 } : { ready: p.mp >= SKILL2_MP, fill: Math.min(1, p.mp / SKILL2_MP) }),
       p: () => lvl < sk[2].lvl ? { locked: true } : { ready: true, fill: 1, passive: true },
+      e: () => lvl < sk[3].lvl ? { locked: true } : p.guard ? { ready: false, fill: 1, glow: true }
+        : { ready: p.cd3 <= 0, fill: 1 - Math.max(0, p.cd3) / (p.cd3Max || 1), secs: p.cd3 > 0 ? Math.ceil(p.cd3 / 1000) : 0 },
       pot: () => { const n = Math.min(POTION_LIMIT - this.potUsed, countItem(this.ch, 'c_potion'));
         return { ready: n > 0 && p.potCd <= 0 && p.hp < p.maxHp, fill: p.potCd > 0 ? 1 - p.potCd / 1500 : 1, label: 'x' + Math.max(0, n) }; },
     };
     this.slots = [];
     if (!touch) {
       // PC: barra de habilidades embaixo, com a tecla de cada uma
-      const items = [['dash', 'Espaço', ''], ['k', 'K', '100'], ['l', 'L', String(SKILL2_MP)], ['p', '', ''], ['pot', 'Q', 'x0']].slice(0, this.pvp ? 4 : 5);
-      const size = 66, gap = 84, x0 = W / 2 - gap * 2;
-      this.hud(this.add.rectangle(W / 2, H - 48, gap * 5 + 16, size + 22, 0x000000, 0.4).setStrokeStyle(2, 0x8a6a2f, 0.7));
+      const items = [['dash', 'Espaço', ''], ['k', 'K', '100'], ['l', 'L', String(SKILL2_MP)], ['e', 'I', ''], ['p', '', ''], ['pot', 'Q', 'x0']].slice(0, this.pvp ? 5 : 6);
+      const size = 66, gap = 84, x0 = W / 2 - gap * (items.length - 1) / 2;
+      this.hud(this.add.rectangle(W / 2, H - 48, gap * items.length + 16, size + 22, 0x000000, 0.4).setStrokeStyle(2, 0x8a6a2f, 0.7));
       items.forEach(([k, key, cost], i2) => this.slots.push(this.skillSlot(x0 + i2 * gap, H - 48, size, k, key, cost, st[k])));
       this.hud(txt(this, 22, H - 22, 'A/D andar • W pular • S descer • J atacar • ESC pausar', 15, '#e8dfc8', { origin: [0, 0.5], bold: false }).setAlpha(0.8));
       return;
@@ -231,6 +233,7 @@ class BattleScene extends Phaser.Scene {
     this.slots.push(this.skillSlot(W - 262, H - 222, 96, 'dash', '', '', st.dash, () => this.tap.dash = true));
     this.slots.push(this.skillSlot(W - 95, H - 268, 96, 'k', '', '100', st.k, () => this.tap.skill = true));
     if (lvl >= sk[1].lvl) this.slots.push(this.skillSlot(W - 215, H - 360, 82, 'l', '', String(SKILL2_MP), st.l, () => this.tap.skill2 = true));
+    if (lvl >= sk[3].lvl) this.slots.push(this.skillSlot(W - 92, H - 410, 80, 'e', '', '', st.e, () => this.tap.skill3 = true));
     if (!this.pvp) this.slots.push(this.skillSlot(W - 360, H - 330, 72, 'pot', '', 'x0', st.pot, () => this.tap.pot = true));
   }
 
@@ -304,7 +307,7 @@ class BattleScene extends Phaser.Scene {
         shade.clear();
         if (s.locked) {
           icon.setTint(0x444444); lock.setVisible(true); if (costTxt) costTxt.setVisible(false);
-          lockTxt.setVisible(true).setText(`Nv.${kind === 'l' ? sk[1].lvl : sk[2].lvl}`);
+          lockTxt.setVisible(true).setText(`Nv.${kind === 'l' ? sk[1].lvl : kind === 'e' ? sk[3].lvl : sk[2].lvl}`);
           return;
         }
         lock.setVisible(false); lockTxt.setVisible(false); if (costTxt) { costTxt.setVisible(true); if (s.label !== undefined && costTxt.text !== s.label) costTxt.setText(s.label); }
@@ -392,12 +395,15 @@ class BattleScene extends Phaser.Scene {
     if (this.tap.atk || JD(K.J) || JD(K.Z)) p.bAtk = 160;
     const wantSkill = this.tap.skill || JD(K.K) || JD(K.X);
     const wantSkill2 = this.tap.skill2 || JD(K.L) || JD(K.C);
+    const wantSkill3 = this.tap.skill3 || JD(K.I) || JD(K.V);
     const wantPot = this.tap.pot || JD(K.Q);
     const jumpHeld = this.jumpHeld || K.W.isDown || K.UP.isDown;
     const atkHeld = this.atkHeld || K.J.isDown || K.Z.isDown;
-    this.tap.atk = this.tap.jump = this.tap.skill = this.tap.dash = this.tap.skill2 = this.tap.pot = false;
+    this.tap.atk = this.tap.jump = this.tap.skill = this.tap.dash = this.tap.skill2 = this.tap.skill3 = this.tap.pot = false;
     p.bJump -= delta; p.bDash -= delta; p.bAtk -= delta;
-    p.cd -= delta; p.inv -= delta; p.dashCd -= delta; p.coyote -= delta; p.cd2 -= delta; p.potCd -= delta;
+    p.cd -= delta; p.inv -= delta; p.dashCd -= delta; p.coyote -= delta; p.cd2 -= delta; p.cd3 -= delta; p.potCd -= delta;
+    if (p.slowT > 0) { p.slowT -= dt; if (Math.random() < 0.3) this.iceDot(p.x, p.y); }
+    if (p.guard) this.updateGuard();
     p.mp = Math.min(100, p.mp + 2.5 * dt);
 
     if (this.state === 'play' && !p.dead && !(p.stunUntil > this.time.now)) {
@@ -411,16 +417,16 @@ class BattleScene extends Phaser.Scene {
         // (andar, pular, atacar de novo = combo). Antes disso o lado fica travado.
         if (p.action === 'attack' && now >= p.cancelAt && (dir || p.bJump > 0 || p.bAtk > 0 || atkHeld)) { p.action = null; p.anim = null; }
         if (p.action === 'hurt' && now - p.hurtAt > 190 && (dir || p.bJump > 0 || p.bAtk > 0)) { p.action = null; p.anim = null; }
-        if (dir && p.action !== 'attack' && p.action !== 'special') p.face = dir;
-        const slow = p.action === 'special' ? 0 : p.action === 'hurt' ? 0.55 : p.action === 'attack' ? (p.ground ? 0.72 : 1) : 1;
-        const target = dir * MOVE_SPEED * slow * (this.held.mag || 1); // analógico: empurrar pouco = andar devagar
+        if (dir && p.action !== 'attack' && p.action !== 'special' && p.action !== 'guard') p.face = dir;
+        const slow = p.action === 'special' ? 0 : p.action === 'guard' ? SKILL3.warrior.move : p.action === 'hurt' ? 0.55 : p.action === 'attack' ? (p.ground ? 0.72 : 1) : 1;
+        const target = dir * MOVE_SPEED * slow * (this.held.mag || 1) * (p.slowT > 0 ? p.slowMul : 1); // analógico: empurrar pouco = andar devagar
         // acelera rápido, freia ainda mais rápido (resposta imediata)
         const acc = (p.ground ? (dir && Math.sign(target) === Math.sign(p.vx || target) ? 4200 : 7000) : 3800) * dt;
         if (p.ground && dir && p.vx * dir < -220) this.skid(); // virada brusca levanta poeira
         p.vx += Phaser.Math.Clamp(target - p.vx, -acc, acc);
 
         // pulo (W / ↑) com "coyote time" e altura variável (soltar cedo = pulo baixo)
-        if (p.bJump > 0 && (p.ground || p.coyote > 0) && p.action !== 'special' && p.action !== 'hurt') {
+        if (p.bJump > 0 && (p.ground || p.coyote > 0) && p.action !== 'special' && p.action !== 'hurt' && p.action !== 'guard') {
           p.vy = JUMP_V; p.ground = false; p.coyote = 0; p.bJump = 0; p.jumpCut = false;
           Sfx.play('jump', 0.6);
           this.dust(p.x, 6);
@@ -433,6 +439,7 @@ class BattleScene extends Phaser.Scene {
         else if ((p.bAtk > 0 || atkHeld) && p.cd <= 0 && !p.action) { p.bAtk = 0; this.attack(); }
         if (wantSkill) this.skill();
         if (wantSkill2) this.skill2();
+        if (wantSkill3) this.skill3();
         if (wantPot) this.drinkPotion();
       }
     } else if (this.state !== 'transition') p.vx = 0;
@@ -581,6 +588,7 @@ class BattleScene extends Phaser.Scene {
   // Mago:      teleporte (chão e ar)
   startDash(dir, force) {
     const p = this.p, cls = this.ch.cls, air = !p.ground;
+    if (p.guard) this.endGuard();
     p.bDash = 0; p.bAtk = 0;
     p.face = dir;
     p.action = 'dash'; p.actionToken = (p.actionToken || 0) + 1; // cancela o golpe pendente
@@ -668,7 +676,13 @@ class BattleScene extends Phaser.Scene {
     d.t += delta;
     const k = Math.min(1, d.t / d.dur);
     d.ghostT -= delta;
-    if (d.kind === 'roll') {
+    if (d.kind === 'leap') { // Salto Evasivo: arco para trás olhando para o inimigo
+      p.vx = d.dir * d.speed * (1 - k * 0.3);
+      this.airPose(); p.spr.x = p.x; p.spr.y = p.y; p.spr.angle = -d.dir * 12 * Math.sin(k * Math.PI);
+      p.spr.setScale(p.baseScale * p.face, p.baseScale);
+      if (d.ghostT <= 0) { this.ghost(d.color, 0.3); d.ghostT = 40; }
+      if (d.t > 160 && p.ground) d.t = d.dur;
+    } else if (d.kind === 'roll') {
       p.vx = d.dir * d.speed * (1 - k * 0.6);
       if (d.sheet) { p.spr.x = p.x; p.spr.y = p.y; p.spr.angle = 0; p.spr.setScale(p.baseScale * d.dir, p.baseScale); }
       if (d.sheet && d.ghostT <= 0) { this.ghost(d.color, 0.22); d.ghostT = 70; }
@@ -728,7 +742,7 @@ class BattleScene extends Phaser.Scene {
     this.tweens.killTweensOf(p.spr);
     p.dash = null; p.action = null; p.anim = null;
     p.spr.angle = 0; p.spr.setAlpha(1);
-    p.vx = d.dir * (d.kind === 'teleport' ? 0 : MOVE_SPEED * 0.8);
+    p.vx = d.dir * (d.kind === 'teleport' ? 0 : d.kind === 'leap' ? MOVE_SPEED * 0.2 : MOVE_SPEED * 0.8);
     if (d.hover) p.vy = d.kind === 'teleport' ? 0 : 60;
     this.playAnim(p.ground ? 'walk' : 'idle', true);
   }
@@ -860,7 +874,7 @@ class BattleScene extends Phaser.Scene {
           else if (sh.splash) {
             this.burst(sh.s.x, sh.s.y, 0xb79bff, 10);
             for (const o of this.monsters) if (Math.abs(o.x - sh.s.x) < sh.splash + o.halfW) this.hitMonster(o, this.rollDmg(sh.mult), 14);
-          } else this.hitMonster(m, this.rollDmg(sh.mult), sh.knock);
+          } else this.hitMonster(m, sh.fixed ? { dmg: sh.fixed, crit: false } : this.rollDmg(sh.mult), sh.knock, { srcX: sh.s.x - sh.vx * 0.05, key: sh.s.texture.key, noBlock: !!sh.fixed });
           if (!sh.pierce) { sh.life = 0; break; }
         }
       }
@@ -888,7 +902,7 @@ class BattleScene extends Phaser.Scene {
   // ---------- Habilidade da tecla L (nível 3+)
   skill2() {
     const p = this.p, cls = this.ch.cls, sk = CLASS_SKILLS[cls][1];
-    if (p.action === 'special' || p.dash) return;
+    if (p.action === 'special' || p.dash || p.guard) return;
     if (this.ch.level < sk.lvl) { toast(this, `${sk.name} libera no nível ${sk.lvl}`, '#9fb4d8'); return; }
     if (p.cd2 > 0) return;
     if (p.mp < SKILL2_MP) { toast(this, `MP insuficiente (${SKILL2_MP})`, '#9fb4d8'); return; }
@@ -916,6 +930,150 @@ class BattleScene extends Phaser.Scene {
       }
     });
   }
+  // ---------- Habilidade da tecla I (nível 8): fuga / defesa — não gasta MP, só recarga
+  skill3() {
+    const p = this.p, cls = this.ch.cls, sk = CLASS_SKILLS[cls][3], cfg = SKILL3[cls];
+    if (p.dead || p.action === 'special' || p.dash || p.guard || this.state !== 'play') return;
+    if (this.ch.level < sk.lvl) { toast(this, `${sk.name} libera no nível ${sk.lvl}`, '#9fb4d8'); return; }
+    if (p.cd3 > 0) return;
+    if (cls === 'hunter' && !p.ground && p.airDash <= 0) return;
+    p.cd3 = p.cd3Max = cfg.cd;
+    this.floatText(p.x, p.y - 230, sk.name, '#9fe3ff', 22);
+    this.emitAct({ a: 's3', face: p.face, x: Math.round(p.x), y: Math.round(p.y) });
+    if (cls === 'warrior') this.shieldWall();
+    else if (cls === 'hunter') this.evasiveLeap();
+    else this.frostNova();
+  }
+  // Guerreiro — Muralha de Escudo: 1,5 s bloqueando tudo que vem pela frente
+  shieldWall() {
+    const p = this.p, cfg = SKILL3.warrior;
+    p.action = 'guard'; p.actionToken = (p.actionToken || 0) + 1; p.bAtk = 0;
+    const ak = this.ak('attack'), mt = ANIM_META[ak];
+    p.spr.anims.stop(); p.spr.setTexture(ak, 2).setOrigin(mt.ox, mt.oy); p.baseScale = mt.scale; p.anim = 'guard';
+    const fx = this.guardFx(p.x + p.face * 70, p.y - 110, p.face);
+    p.guard = { until: this.time.now + cfg.dur, face: p.face, fx };
+    Sfx.play('bash', 0.6); this.cameras.main.shake(80, 0.003);
+  }
+  // barreira dourada na frente do escudo (brilho + arco de luz)
+  guardFx(x, y, face) {
+    const glow = this.add.image(0, 0, 'fx_glow').setTint(0xffd36b).setScale(0.7, 1.3).setBlendMode('ADD');
+    const arc = this.add.image(face * 18, 0, 'fx_ring').setTint(0xffe9a0).setScale(0.26, 1.0).setBlendMode('ADD');
+    const c = this.add.container(x, y, [glow, arc]).setDepth(21).setAlpha(0.95);
+    this.tweens.add({ targets: c, alpha: { from: 0.6, to: 1 }, duration: 260, yoyo: true, repeat: -1 });
+    c.setScale(0.3); this.tweens.add({ targets: c, scale: 1, duration: 140, ease: 'Back.out' });
+    return c;
+  }
+  updateGuard() {
+    const p = this.p, g = p.guard;
+    if (p.dead || this.time.now >= g.until || p.action !== 'guard') { this.endGuard(); return; }
+    p.face = g.face; g.fx.x = p.x + g.face * 70; g.fx.y = p.y - 110;
+  }
+  endGuard() {
+    const p = this.p, g = p.guard; if (!g) return;
+    p.guard = null; this.tweens.killTweensOf(g.fx);
+    this.tweens.add({ targets: g.fx, alpha: 0, scaleX: 0.2, duration: 140, onComplete: () => g.fx.destroy() });
+    if (p.action === 'guard') { p.action = null; p.anim = null; }
+  }
+  // o golpe veio pela frente do escudo?
+  guardBlocks(srcX) { const g = this.p.guard; return !!g && (srcX === undefined || (srcX - this.p.x) * g.face > -25); }
+  // bloqueou: nada de dano e metade volta para quem atacou (projétil dourado saindo do escudo)
+  blockHit(dmg, o = {}) {
+    const p = this.p, g = p.guard, now = this.time.now;
+    if (!p.lastBlockT || now - p.lastBlockT > 250) this.floatText(p.x, p.y - 220, 'BLOQUEIO!', '#ffd36b', 26);
+    p.lastBlockT = now; this.stats.blocked = (this.stats.blocked || 0) + dmg;
+    Sfx.play('bash', 0.9); Sfx.tone(1500, 0.05, 'square', 0.03);
+    this.burst(p.x + g.face * 80, p.y - 120, 0xffe9a0, 10);
+    this.cameras.main.shake(90, 0.004);
+    // metade do dano que chegou. Contra a IA o tiro passa pela redução da Arena de novo (por isso o ÷ PVP_DMG);
+    // no duelo o aparelho do amigo aplica direto na vida dele
+    const half = dmg * SKILL3.warrior.reflect;
+    this.reflectShot(Math.max(1, Math.round(half / (this.pvp && !this.netMode ? PVP_DMG : 1))), o.key);
+    if (this.netMode) this.ns('act', { a: 'refl', d: Math.max(1, Math.round(half)), k: o.key || '' });
+  }
+  reflectShot(fixed, key) {
+    const p = this.p, k = key === 'fx_arrow' || key === 'fx_orb' ? key : 'fx_orb';
+    const sh = this.shoot(k, 1500, 0, 0, false, 0, { face: p.guard ? p.guard.face : p.face, dy: -120, dx: 60, life: 0.8, trail: 0xffd36b, noAim: true });
+    sh.fixed = fixed; sh.s.setTint(0xffd36b);
+  }
+  // Caçador — Salto Evasivo: pula para trás (invencível) e solta uma flecha de rede para frente
+  evasiveLeap() {
+    const p = this.p, cfg = SKILL3.hunter, face = p.face, dir = -face, air = !p.ground;
+    p.bDash = 0; p.bAtk = 0; p.action = 'dash'; p.actionToken = (p.actionToken || 0) + 1;
+    if (air) p.airDash = 0;
+    p.vx = 0; p.kvx = 0; p.vy = cfg.jump; p.ground = false; p.plat = null; p.coyote = 0;
+    p.dash = { kind: 'leap', t: 0, dur: 650, speed: cfg.speed, iframes: 450, dir, hit: new Set(), ghostT: 0, color: 0x9cff8a };
+    p.inv = Math.max(p.inv, 450); p.dodging = true;
+    this.time.delayedCall(450, () => { p.dodging = false; });
+    Sfx.play('jump', 0.7); Sfx.play('dash', 0.5); this.dust(p.x, 8);
+    this.time.delayedCall(110, () => {
+      if (p.dead || this.state === 'ended') return;
+      Sfx.shoot();
+      const sh = this.shoot('fx_arrow', 1400, 0, 0.6, false, 0, { face, dy: -128, dx: 90, trail: 0xe9ffd0, scale: 1.2,
+        onHit: (m) => { this.hitMonster(m, this.rollDmg(0.6), 20); this.slowMonster(m, cfg.slow, cfg.slowT); this.netFx(m.x, (m.y ?? GROUND_Y) - m.height * 0.5); } });
+      sh.s.setTint(0xe9ffd0);
+    });
+  }
+  // rede que prende os pés (efeito visual)
+  netFx(x, y) {
+    const g = this.add.graphics({ x, y }).setDepth(29).lineStyle(3, 0xe9ffd0, 0.95);
+    for (let i = -2; i <= 2; i++) { g.lineBetween(-50, i * 18, 50, i * 18); g.lineBetween(i * 22, -40, i * 22, 40); }
+    g.setScale(0.3); this.tweens.add({ targets: g, scale: 1.1, alpha: 0, duration: 600, ease: 'Quad.out', onComplete: () => g.destroy() });
+  }
+  // Mago — Nova Gélida: explosão de gelo que empurra quem estiver perto e deixa lento
+  frostNova() {
+    const p = this.p, cfg = SKILL3.mage;
+    p.action = 'attack'; p.cancelAt = this.time.now + 160; this.playAnim('attack', true);
+    p.inv = Math.max(p.inv, 300);
+    this.novaFx(p.x, p.y, cfg.radius);
+    for (const m of this.monsters) {
+      if (m.hp <= 0 || m.state === 'dead') continue;
+      const dx = m.x - p.x;
+      if (Math.abs(dx) > cfg.radius + m.halfW || Math.abs((m.y ?? GROUND_Y) - p.y) > 260) continue;
+      this.hitMonster(m, this.rollDmg(cfg.mult), 0, { stagger: true });
+      this.slowMonster(m, cfg.slow, cfg.slowT);
+      this.pushMonster(m, Math.sign(dx) || p.face, cfg.push);
+    }
+  }
+  novaFx(x, y, R) {
+    Sfx.play('warp_out', 0.8); Sfx.play('slam', 0.5); this.cameras.main.shake(140, 0.006);
+    for (const [d, sc, col] of [[0, 1, 0x9fdfff], [80, 0.8, 0xffffff]]) {
+      const ring = this.add.image(x, y - 90, 'fx_ring').setTint(col).setScale(0.2).setDepth(27).setBlendMode('ADD');
+      this.tweens.add({ targets: ring, scale: R / 110 * sc, alpha: 0, duration: 420, delay: d, ease: 'Quad.out', onComplete: () => ring.destroy() });
+    }
+    const flat = this.add.image(x, y - 4, 'fx_ring').setTint(0x9fdfff).setScale(0.3, 0.08).setDepth(17).setBlendMode('ADD');
+    this.tweens.add({ targets: flat, scaleX: R / 90, scaleY: R / 420, alpha: 0, duration: 500, onComplete: () => flat.destroy() });
+    for (let i = 0; i < 22; i++) {
+      const a = (i / 22) * Math.PI * 2, d = this.add.image(x, y - 90, 'fx_dot').setTint(Phaser.Utils.Array.GetRandom([0x9fdfff, 0xffffff, 0x6fc3ff])).setScale(0.7).setDepth(28).setBlendMode('ADD');
+      this.tweens.add({ targets: d, x: x + Math.cos(a) * R, y: y - 90 + Math.sin(a) * R * 0.6, alpha: 0, scale: 0.15, duration: 460, onComplete: () => d.destroy() });
+    }
+  }
+  iceDot(x, y) {
+    const d = this.add.image(x + Phaser.Math.Between(-40, 40), y - Phaser.Math.Between(0, 40), 'fx_dot').setTint(0x9fdfff).setScale(0.5).setDepth(30).setBlendMode('ADD');
+    this.tweens.add({ targets: d, y: d.y - 40, alpha: 0, duration: 420, onComplete: () => d.destroy() });
+  }
+  // deixa o monstro (ou o rival, na Arena) mais lento por um tempo
+  slowMonster(m, mul, secs) {
+    if (m.rival) return this.slowRival(m, mul, secs);
+    if (m.hp <= 0 || m.state === 'dead') return;
+    m.slowT = Math.max(m.slowT || 0, secs * (m.boss ? 0.6 : 1)); m.slowMul = mul;
+    this.floatText(m.x, GROUND_Y - m.height - 40, 'LENTO!', '#9fdfff', 20);
+  }
+  slowRival() {}
+  // empurra o monstro para longe (chefe resiste mais) e interrompe o ataque dele
+  pushMonster(m, dir, dist) {
+    if (m.rival) return;
+    if (m.hp <= 0 || m.state === 'dead') return;
+    if (!m.boss && (m.state === 'windup' || m.state === 'strike' || m.state === 'recombo')) { this.clearWarn(m); m.state = 'cool'; m.t = 0.5; m.yOff = 0; this.monAnim(m, 'idle'); }
+    const segL = this.seg * SEG, to = Phaser.Math.Clamp(m.x + dir * dist * (m.boss ? 0.35 : 1), segL + 60, segL + SEG - 60);
+    this.tweens.add({ targets: m, x: to, duration: 280, ease: 'Quad.out' });
+  }
+  // o jogador ficou lento (rede do caçador / nova do mago adversários)
+  slowPlayer(mul, secs) {
+    const p = this.p; if (p.dead) return;
+    p.slowT = Math.max(p.slowT, secs); p.slowMul = mul;
+    this.floatText(p.x, p.y - 240, 'LENTO!', '#9fdfff', 22);
+  }
+
   // ---------- itens da Loja Premium na batalha
   drinkPotion() {
     const p = this.p;
@@ -979,7 +1137,7 @@ class BattleScene extends Phaser.Scene {
   }
   skill() {
     const p = this.p, sk = this.k.skill, cls = this.ch.cls, cfg = ANIM_CFG[cls].special;
-    if (p.action === 'special') return;
+    if (p.action === 'special' || p.guard) return;
     if (p.mp < 100) { toast(this, 'MP insuficiente — acerte monstros para carregar', '#9fb4d8'); return; }
     if (cls === 'warrior') { // Escudada: avança com o escudo e atordoa (1 s) quem estiver na frente
       if (p.dash) return;
@@ -1092,7 +1250,7 @@ class BattleScene extends Phaser.Scene {
     this.monsters = this.monsters.filter(o => o !== m);
     if (this.monsters.length === 0) this.time.delayedCall(450, () => this.segmentCleared());
   }
-  hurtPlayer(dmg, srcX) {
+  hurtPlayer(dmg, srcX, o = {}) {
     const p = this.p;
     if (this.state !== 'play') return false;
     if (p.dodging) { // esquivou na cambalhota / teleporte
@@ -1103,6 +1261,7 @@ class BattleScene extends Phaser.Scene {
       }
       return false;
     }
+    if (p.guard && !o.noBlock && this.guardBlocks(srcX)) { this.blockHit(dmg, o); return true; } // Muralha de Escudo
     if (p.inv > 0) return false;
     const taken = Math.max(1, Math.round(dmg * (this.k.dmgTaken || 1) * (1 - this.st.def / (this.st.def + 150))));
     p.hp -= taken; p.inv = this.pvp ? 350 : 700; this.stats.dmg += taken;
@@ -1112,6 +1271,7 @@ class BattleScene extends Phaser.Scene {
     if (srcX !== undefined) p.kvx = Math.sign(p.x - srcX || 1) * 520;
     if (p.action !== 'special' && p.hp > 0) {
       if (p.dash) this.endDash();
+      if (p.guard) this.endGuard();
       p.action = 'hurt'; p.hurtAt = this.time.now; p.actionToken = (p.actionToken || 0) + 1; this.playAnim('hurt', true);
     }
     this.cameras.main.shake(160, 0.008);
@@ -1140,6 +1300,8 @@ class BattleScene extends Phaser.Scene {
     for (const m of alive) {
       const ai = m.ai, dx = p.x - m.x, dist = Math.abs(dx), want = Math.sign(dx) || 1;
       m.t -= dt; m.stun -= dt;
+      const slowK = m.slowT > 0 ? m.slowMul : 1;
+      if (m.slowT > 0) { m.slowT -= dt; if (Math.random() < 0.25) this.iceDot(m.x, GROUND_Y - Phaser.Math.Between(0, m.height)); }
       let moving = false;
       if (this.state !== 'play' && m.state !== 'enter') { if (m.state !== 'cool') { m.state = 'cool'; this.clearWarn(m); } m.t = Math.max(m.t, 0.3); }
       if (m.frozen > 0) {
@@ -1156,7 +1318,7 @@ class BattleScene extends Phaser.Scene {
           m.turnT = 0;
           const reach = m.halfW + ai.reach;
           if (dist > reach) {
-            const sp = m.speed * (dist > reach + 200 ? 1 : 0.75) * (m.rage > 0 ? 1.65 : 1);
+            const sp = m.speed * (dist > reach + 200 ? 1 : 0.75) * (m.rage > 0 ? 1.65 : 1) * slowK;
             m.want = want * sp; // acelera até essa velocidade (abaixo)
           } else this.monWindup(m);
           break;
@@ -1168,7 +1330,7 @@ class BattleScene extends Phaser.Scene {
         case 'strike': {
           const k = m.strikeT / m.strikeDur;
           m.strikeT += dt;
-          m.x += m.face * (m.lunge / m.strikeDur) * dt;
+          m.x += m.face * (m.lunge / m.strikeDur) * dt * slowK;
           if (ai.pounce || m.hop) m.yOff = -Math.sin(Math.min(1, k) * Math.PI) * (m.hop ? m.hop : 95);
           // janela de acerto do golpe
           if (!m.didHit && m.strikeT <= m.strikeDur + 0.05) {

@@ -355,28 +355,28 @@ class HubScene extends Phaser.Scene {
     button(this, bx, 600, 306, 58, 'Trocar personagem', () => fadeTo(this, 'CharSelect'), { size: 21, skin: 'btn_dark' });
     if (Cloud.user) cloudBadge(this, 1042, 652);
     const nNew = CLASS_SKILLS[c.cls].filter(sk => sk.lvl <= c.level).length;
-    button(this, 660, 410, 240, 66, 'HABILIDADES', () => this.showSkills(c), { size: 21, title: true, skin: 'btn_bronze', sub: `${nNew}/3 liberadas` });
+    button(this, 660, 410, 240, 66, 'HABILIDADES', () => this.showSkills(c), { size: 21, title: true, skin: 'btn_bronze', sub: `${nNew}/${CLASS_SKILLS[c.cls].length} liberadas` });
     screenFrame(this);
   }
-  // árvore de habilidades da classe (1 → 3 → 5)
+  // árvore de habilidades da classe (1 → 3 → 5 → 8)
   showSkills(c) {
     const ov = []; const L = (o) => { ov.push(o.setDepth(2000 + ov.length)); return o; };
     const close = () => ov.forEach(o => o.destroy());
     L(this.add.rectangle(W / 2, H / 2, W, H, 0x000000, 0.7).setInteractive());
-    L(ui(this, 140, 70, 'frame_big', 1000, 580));
+    L(ui(this, 40, 70, 'frame_big', 1200, 580));
     L(txt(this, W / 2, 112, `Habilidades — ${CLASSES[c.cls].name}`, 34, '#f3e2b8', { origin: 0.5, title: true }));
     const list = CLASS_SKILLS[c.cls];
     list.forEach((sk, i) => {
-      const x = 300 + i * 340, y = 360, on = c.level >= sk.lvl;
-      if (i < 2) L(this.add.image(x + 170, y - 40, nineTex(this, c.level >= list[i + 1].lvl ? 'bar_gold' : 'bar_dark', 90, 14)));
-      const card = L(ui(this, x - 140, y - 170, 'panel_parch', 280, 330)); if (!on) card.setTint(0x6a6458);
-      const ic = L(this.add.image(x, y - 100, `sk_${c.cls}_${SKILL_ICON_KINDS[i]}`)); ic.setScale(104 / ic.width);
+      const x = 190 + i * 300, y = 360, on = c.level >= sk.lvl;
+      if (i < list.length - 1) L(this.add.image(x + 150, y - 40, nineTex(this, c.level >= list[i + 1].lvl ? 'bar_gold' : 'bar_dark', 40, 14)));
+      const card = L(ui(this, x - 130, y - 170, 'panel_parch', 260, 330)); if (!on) card.setTint(0x6a6458);
+      const ic = L(this.add.image(x, y - 100, `sk_${c.cls}_${SKILL_LIST_ICONS[i]}`)); ic.setScale(104 / ic.width);
       if (!on) { ic.setTint(0x555555); L(uiImg(this, x, y - 100, 'lock_gold', 44)); }
       else if (sk.key) L(txt(this, x + 40, y - 62, sk.key, 22, '#ffffff', { origin: 0.5, title: true, stroke: 5 }));
       const ink = on ? '#3b2510' : '#2a2218';
-      L(txt(this, x, y - 30, sk.name, 23, on ? '#7a4a14' : '#3a2a14', { origin: 0.5, title: true, stroke: 0 }));
+      L(txt(this, x, y - 30, sk.name, sk.name.length > 13 ? 18 : 23, on ? '#7a4a14' : '#3a2a14', { origin: 0.5, title: true, stroke: 0 }));
       L(txt(this, x, y + 2, on ? (sk.key ? `Tecla ${sk.key}` : 'Passiva') : `Libera no nível ${sk.lvl}`, 17, on ? '#2f6b1e' : '#8a2a10', { origin: 0.5, stroke: 0 }));
-      L(txt(this, x, y + 30, sk.desc, 16, ink, { origin: [0.5, 0], align: 'center', wrap: 240, bold: false, stroke: 0 }));
+      L(txt(this, x, y + 30, sk.desc, 15, ink, { origin: [0.5, 0], align: 'center', wrap: 212, bold: false, stroke: 0 }));
     });
     L(button(this, W / 2, 610, 240, 58, 'Fechar', close, { size: 22 }));
   }

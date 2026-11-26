@@ -4,7 +4,7 @@
 // ============================================================
 
 const GAME_TITLE = 'Lendas de Eldrin'; // nome do jogo (até a v0.5.8 era 'Lendas de Aether')
-const GAME_VERSION = '0.5.9'; // tools/make_update.py atualiza sozinho
+const GAME_VERSION = '0.6.0'; // tools/make_update.py atualiza sozinho
 const SOULSHOT_MULT = 1.25; // Soulshot: +25% de dano no ataque básico (gasta 1 por ataque)
 const DASH_COOLDOWN = 4000; // ms entre um desvio (Espaço) e outro — vale para todas as classes
 const W = 1280, H = 720, GROUND_Y = 590;
@@ -54,27 +54,37 @@ function rollRarity(bonus = 0) {
   return 'comum';
 }
 // ---------------- Habilidades por classe (árvore simples: nível 1 / 3 / 5)
-// K = Especial (100 MP) • L = Habilidade (35 MP) • nível 5 = Maestria (passiva)
+// K = Especial (100 MP) • L = Habilidade (35 MP) • nível 5 = Maestria (passiva) • I (nível 8) = fuga/defesa (só recarga)
 const CLASS_SKILLS = {
   warrior: [
     { lvl: 1, key: 'K', name: 'Escudada', desc: 'Avança com o escudo e acerta todos à frente: dano alto e deixa atordoado por 1 segundo (chefes também). Custa 100 MP.' },
     { lvl: 3, key: 'L', name: 'Investida de Escudo', desc: 'Avança com o escudo atravessando os inimigos: dano alto e quebra o ataque deles. 35 MP.' },
     { lvl: 5, key: '', name: 'Fúria', desc: 'Passiva: o 3º golpe do combo solta uma onda de choque pelo chão.' },
+    { lvl: 8, key: 'I', name: 'Muralha de Escudo', desc: 'Levanta o escudo por 1,5 s: bloqueia todo dano pela frente e devolve metade a quem atacou (flechas e magias voltam). Pelas costas acerta. Recarga 12 s.' },
   ],
   hunter: [
     { lvl: 1, key: 'K', name: 'Chuva de Flechas', desc: 'Rajada de flechas que atravessam os inimigos. Custa 100 MP.' },
     { lvl: 3, key: 'L', name: 'Flecha Explosiva', desc: 'Flecha que explode no impacto, acertando todos por perto. 35 MP.' },
     { lvl: 5, key: '', name: 'Tiro Triplo', desc: 'Passiva: o 3º disparo do combo solta três flechas em leque.' },
+    { lvl: 8, key: 'I', name: 'Salto Evasivo', desc: 'Salta para trás sem tomar dano e dispara uma flecha de rede: quem for acertado fica 40% mais lento por 2 s. Recarga 10 s.' },
   ],
   mage: [
     { lvl: 1, key: 'K', name: 'Bola de Fogo', desc: 'Bola de fogo gigante que atravessa a tela. Custa 100 MP.' },
     { lvl: 3, key: 'L', name: 'Prisão de Gelo', desc: 'Esfera de gelo que congela os inimigos atingidos por 2 segundos. 35 MP.' },
     { lvl: 5, key: '', name: 'Teleporte Arcano', desc: 'Passiva: o teleporte explode em energia arcana na saída e na chegada.' },
+    { lvl: 8, key: 'I', name: 'Nova Gélida', desc: 'Explosão de gelo em volta: empurra os inimigos perto para longe e deixa 50% mais lentos por 2 s. Recarga 12 s.' },
   ],
 };
 const SKILL2_MP = 35;
-// ícones (assets/skills/<classe>_<tipo>.png): k = especial, l = habilidade, p = passiva, dash = esquiva
-const SKILL_ICON_KINDS = ['k', 'l', 'p', 'dash'];
+// tecla I (nível 8): fuga dos atiradores / defesa do guerreiro. Não gasta MP, só tem recarga (ms)
+const SKILL3 = {
+  warrior: { cd: 12000, dur: 1500, reflect: 0.5, move: 0.3 },           // Muralha de Escudo
+  hunter:  { cd: 10000, speed: 760, jump: -820, slow: 0.6, slowT: 2 },  // Salto Evasivo (slow = velocidade que sobra)
+  mage:    { cd: 12000, radius: 270, mult: 0.5, push: 300, slow: 0.5, slowT: 2 }, // Nova Gélida
+};
+// ícones (assets/skills/<classe>_<tipo>.png): k = especial, l = habilidade, p = passiva, dash = esquiva, e = tecla I
+const SKILL_ICON_KINDS = ['k', 'l', 'p', 'dash', 'e'];
+const SKILL_LIST_ICONS = ['k', 'l', 'p', 'e']; // ordem dos cartões da tela de Habilidades (= CLASS_SKILLS)
 // ---------------- Loja Premium (diamantes 💎)
 // gems = preço em diamantes. O servidor confere o mesmo preço (supabase/migrations/002).
 // Itens são fixos (sem sorteio): o jogador sabe exatamente o que está comprando.

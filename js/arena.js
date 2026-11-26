@@ -78,7 +78,8 @@ class Rival {
     this.hp = this.max = this.maxHp = Math.round(this.st.hp * PVP_HP);
     this.x = x; this.y = GROUND_Y; this.vx = 0; this.vy = 0; this.kvx = 0; this.face = x > SEG / 2 ? -1 : 1;
     this.ground = true; this.plat = null; this.mp = 0; this.inv = 0; this.dodging = false; this.frozen = 0;
-    this.action = null; this.anim = null; this.dash = null; this.cd = 0; this.cd2 = 0; this.dashCd = 0; this.airDash = 1;
+    this.action = null; this.anim = null; this.dash = null; this.cd = 0; this.cd2 = 0; this.cd3 = 0; this.dashCd = 0; this.airDash = 1;
+    this.guard = null; this.slowT = 0; this.slowMul = 1;
     this.combo = 0; this.lastAtk = 0; this.token = 0; this.cancelAt = 0; this.hurtAt = 0; this.dead = false;
     this.height = 205; this.halfW = 52; this.sx = 1;
     this.in = { dir: 0, jump: false, drop: false };
@@ -108,7 +109,7 @@ class Rival {
     const crit = Math.random() * 100 < this.st.crit;
     return Math.max(1, Math.round(this.st.atk * mult * Phaser.Math.FloatBetween(0.9, 1.1) * (crit ? 1.8 : 1) * PVP_DMG));
   }
-  hitPlayer(mult, srcX) { return this.s.hurtPlayer(this.rollDmg(mult), srcX ?? this.x); }
+  hitPlayer(mult, srcX, o) { return this.s.hurtPlayer(this.rollDmg(mult), srcX ?? this.x, o); }
   nearPlayer(rx, ry, dx0 = -40) { // o jogador está na área à frente?
     const p = this.s.p, fx = (p.x - this.x) * this.face;
     return fx > dx0 && fx < rx && Math.abs(p.y - this.y) < ry;
@@ -205,6 +206,58 @@ class Rival {
       }
     });
   }
+  // tecla I (nível 8): Muralha de Escudo / Salto Evasivo / Nova Gélida
+  doSkill3(face) {
+    if (this.dead) return;
+    const s = this.s, cls = this.cls, cfg = SKILL3[cls];
+    if (face) this.face = face;
+    this.cd3 = cfg.cd;
+    s.floatText(this.x, this.y - 250, CLASS_SKILLS[cls][3].name, '#ff9a8a', 22);
+    if (cls === 'warrior') {
+      this.action = 'guard'; this.token++; this.anim = 'guard';
+      const k = this.ak('attack'), mt = ANIM_META[k]; this.spr.anims.stop(); this.spr.setTexture(k, 2).setOrigin(mt.ox, mt.oy); this.baseScale = mt.scale;
+      const fx = s.guardFx(this.x + this.face * 70, this.y - 110, this.face);
+      this.guard = { until: s.time.now + cfg.dur, face: this.face, fx };
+      Sfx.play('bash', 0.5);
+    } else if (cls === 'hunter') {
+      const f = this.face;
+      this.doDash('leap', -f);
+      s.time.delayedCall(110, () => {
+        if (this.dead || s.state === 'ended') return;
+        Sfx.shoot();
+        const sh = this.fire('fx_arrow', 1400, 0, 0.6, { dy: -128, dx: 90, face: f, scale: 1.2, trail: 0xe9ffd0, onHit: (x, y) => { s.netFx(x, y); s.slowPlayer(cfg.slow, cfg.slowT); } });
+        sh.s.setTint(0xe9ffd0);
+      });
+    } else {
+      this.action = 'attack'; this.cancelAt = s.time.now + 160; this.token++; this.play('attack', true);
+      this.inv = Math.max(this.inv, 300);
+      s.novaFx(this.x, this.y, cfg.radius);
+      const p = s.p, dx = p.x - this.x;
+      if (Math.abs(dx) < cfg.radius + 40 && Math.abs(p.y - this.y) < 260 && this.hitPlayer(cfg.mult, this.x)) {
+        if (!p.guard) { p.kvx = (Math.sign(dx) || this.face) * cfg.push * 7; s.slowPlayer(cfg.slow, cfg.slowT); }
+      }
+    }
+  }
+  endGuard() {
+    const g = this.guard; if (!g) return;
+    this.guard = null; this.s.tweens.killTweensOf(g.fx);
+    this.s.tweens.add({ targets: g.fx, alpha: 0, scaleX: 0.2, duration: 140, onComplete: () => g.fx.destroy() });
+    if (this.action === 'guard') { this.action = null; this.anim = null; }
+  }
+  guardBlocks(srcX) { return !!this.guard && (srcX - this.x) * this.guard.face > -25; }
+  // bloqueou: mostra e devolve um projétil dourado com dano fixo (já com a redução da Arena)
+  blockFx() {
+    const s = this.s, now = s.time.now;
+    if (!this.lastBlock || now - this.lastBlock > 250) s.floatText(this.x, this.y - 230, 'BLOQUEIO!', '#ffd36b', 24);
+    this.lastBlock = now;
+    Sfx.play('bash', 0.8); s.burst(this.x + (this.guard ? this.guard.face : this.face) * 80, this.y - 120, 0xffe9a0, 10);
+  }
+  reflect(fixed, key) {
+    this.blockFx();
+    const k = key === 'fx_arrow' || key === 'fx_orb' ? key : 'fx_orb';
+    const sh = this.fire(k, 1500, 0, 0, { dy: -120, dx: 60, life: 0.8, trail: 0xffd36b, noAim: true, face: this.guard ? this.guard.face : this.face });
+    sh.fixed = fixed; sh.s.setTint(0xffd36b);
+  }
   // projétil do rival (só acerta o jogador)
   fire(key, speed, angleDeg, mult, o = {}) {
     const s = this.s, face = o.face || this.face;
@@ -237,15 +290,20 @@ class Rival {
       shieldbash: { dur: 240, speed: 900, iframes: 320, cd: 0, color: 0xfff09a, hover: air },
       airdash: { dur: 230, speed: 1150, iframes: 230, cd: 330, color: 0x9cff8a, hover: true },
       teleport: { dur: 240, dist: 290, iframes: 320, cd: 420, color: 0xc08cff, hover: true },
+      leap: { dur: 650, speed: SKILL3.hunter.speed, iframes: 450, cd: 0, color: 0x9cff8a },
     }[kind];
+    if (this.guard) this.endGuard();
     this.dash = { kind, t: 0, ...D, dir, hit: false, ghostT: 0 };
-    if (kind !== 'charge' && kind !== 'shieldbash') this.dashCd = DASH_COOLDOWN;
+    if (kind !== 'charge' && kind !== 'shieldbash' && kind !== 'leap') this.dashCd = DASH_COOLDOWN;
     this.inv = Math.max(this.inv, D.iframes); this.dodging = true;
     s.time.delayedCall(D.iframes, () => { this.dodging = false; });
     if (D.hover && this.mode === 'ai') this.vy = 0;
     this.vx = 0; this.kvx = 0; this.spr.anims.stop(); this.anim = null; this.spr.setAlpha(1);
-    if (kind === 'roll') {
-      Sfx.play('roll', 0.6); s.dust(this.x, 6, this.y);
+    if (kind === 'leap') {
+      Sfx.play('jump', 0.6); Sfx.play('dash', 0.4); s.dust(this.x, 6, this.y);
+      if (this.mode === 'ai') { this.vy = SKILL3.hunter.jump; this.ground = false; this.plat = null; }
+      this.face = -dir;
+    } else if (kind === 'roll') {
       const rk = `${this.base}_roll`;
       if (hasAnim(rk)) { const mt = ANIM_META[rk]; this.spr.setOrigin(mt.ox, mt.oy); this.baseScale = mt.scale; this.spr.play(rk); }
     } else if (kind === 'bash' || kind === 'charge' || kind === 'shieldbash') {
@@ -272,7 +330,11 @@ class Rival {
     const s = this.s, d = this.dash;
     d.t += delta; d.ghostT -= delta;
     const k = Math.min(1, d.t / d.dur), ai = this.mode === 'ai';
-    if (d.kind === 'roll') { if (ai) this.vx = d.dir * d.speed * (1 - k * 0.6); }
+    if (d.kind === 'leap') {
+      if (ai) this.vx = d.dir * d.speed * (1 - k * 0.3);
+      this.face = -d.dir; this.airPose();
+      if (d.t > 160 && this.ground) d.t = d.dur;
+    } else if (d.kind === 'roll') { if (ai) this.vx = d.dir * d.speed * (1 - k * 0.6); }
     else if (d.kind === 'teleport') {
       if (ai) { this.vx = 0; this.vy = 0; }
       if (!d.moved && d.t >= (d.vanishAt || 90)) {
@@ -307,13 +369,14 @@ class Rival {
     const d = this.dash; if (!d) return;
     if (d.shield) { const sh = d.shield; this.s.tweens.add({ targets: sh, alpha: 0, duration: 120, onComplete: () => sh.destroy() }); }
     this.dash = null; this.action = null; this.anim = null;
-    if (this.mode === 'ai') { this.vx = d.dir * (d.kind === 'teleport' ? 0 : MOVE_SPEED * 0.8); if (d.hover) this.vy = d.kind === 'teleport' ? 0 : 60; }
+    if (this.mode === 'ai') { this.vx = d.dir * (d.kind === 'teleport' ? 0 : d.kind === 'leap' ? MOVE_SPEED * 0.2 : MOVE_SPEED * 0.8); if (d.hover) this.vy = d.kind === 'teleport' ? 0 : 60; }
   }
   // golpe do jogador acertou o rival (só na Arena contra a IA; no duelo quem decide é o aparelho do amigo)
   takeHit({ dmg, crit }, knock, opt = {}) {
     const s = this.s;
     if (this.dead || s.state !== 'play') return;
     if (this.dodging) { this.showDodge(); return; }
+    if (!opt.noBlock && this.guardBlocks(opt.srcX ?? s.p.x)) { this.reflect(Math.max(1, Math.round(dmg * PVP_DMG * SKILL3.warrior.reflect)), opt.key); return; }
     if (this.inv > 0) return;
     const taken = Math.max(1, Math.round(dmg * PVP_DMG * (this.k.dmgTaken || 1) * (1 - this.st.def / (this.st.def + 150))));
     this.hp -= taken; this.inv = 350; this.mp = Math.min(100, this.mp + 4);
@@ -335,18 +398,19 @@ class Rival {
     if (this.mode === 'ai') this.kvx = dir * Math.min(520, knock * 9);
     if (this.action !== 'special' && !this.dead) {
       if (this.dash) this.endDash();
+      if (this.guard) this.endGuard();
       this.token++; this.action = 'hurt'; this.hurtAt = s.time.now; this.play('hurt', true);
     }
     s.freeze(crit ? 75 : 45);
   }
   freeze(secs, stun = false) {
     if (this.dead) return;
-    this.frozen = secs; this.spr.anims.pause(); this.spr.setTint(stun ? 0xfff0a0 : 0x9fdfff); this.token++; this.action = null; if (this.dash) this.endDash();
+    this.frozen = secs; this.spr.anims.pause(); this.spr.setTint(stun ? 0xfff0a0 : 0x9fdfff); this.token++; if (this.guard) this.endGuard(); this.action = null; if (this.dash) this.endDash();
     if (stun) this.s.floatText(this.x, this.y - 230, 'ATORDOADO!', '#ffe27a', 22); else Sfx.play('warp_out', 0.4);
   }
   die() {
     if (this.dead) return;
-    this.dead = true; this.hp = 0; if (this.dash) this.endDash();
+    this.dead = true; this.hp = 0; if (this.dash) this.endDash(); if (this.guard) this.endGuard();
     const s = this.s, dk = `${this.base}_death`;
     this.spr.clearTint().setAlpha(1).setAngle(0);
     if (hasAnim(dk)) { const mt = ANIM_META[dk]; this.spr.setOrigin(mt.ox, mt.oy).setScale(mt.scale * this.face, mt.scale).play(dk); }
@@ -358,8 +422,13 @@ class Rival {
   // ---------------------------------------------------------- LOOP
   update(dt, delta) {
     const s = this.s;
-    this.inv -= delta; this.cd -= delta; this.cd2 -= delta; this.dashCd -= delta;
+    this.inv -= delta; this.cd -= delta; this.cd2 -= delta; this.cd3 -= delta; this.dashCd -= delta;
     this.dodgeCd -= dt; this.jumpCd -= dt;
+    if (this.slowT > 0) { this.slowT -= dt; if (Math.random() < 0.3) s.iceDot(this.x, this.y); }
+    if (this.guard) {
+      if (this.dead || s.time.now >= this.guard.until || this.action !== 'guard') this.endGuard();
+      else { this.face = this.guard.face; this.guard.fx.x = this.x + this.face * 70; this.guard.fx.y = this.y - 110; }
+    }
     if (this.frozen > 0) { this.frozen -= dt; if (this.frozen <= 0) { this.spr.anims.resume(); this.spr.clearTint(); } }
     if (this.mode === 'net') this.followNet(dt);
     else if (!this.dead) {
@@ -375,12 +444,12 @@ class Rival {
     if (!this.dash) {
       if (this.action === 'hurt' && now - this.hurtAt > 260) { this.action = null; this.anim = null; }
       const dir = this.frozen > 0 ? 0 : this.in.dir;
-      if (dir && this.action !== 'attack' && this.action !== 'special') this.face = dir;
-      const slow = this.action === 'special' || this.frozen > 0 ? 0 : this.action === 'hurt' ? 0.4 : this.action === 'attack' ? (this.ground ? 0.72 : 1) : 1;
-      const target = dir * MOVE_SPEED * slow;
+      if (dir && this.action !== 'attack' && this.action !== 'special' && this.action !== 'guard') this.face = dir;
+      const slow = this.action === 'special' || this.frozen > 0 ? 0 : this.action === 'guard' ? SKILL3.warrior.move : this.action === 'hurt' ? 0.4 : this.action === 'attack' ? (this.ground ? 0.72 : 1) : 1;
+      const target = dir * MOVE_SPEED * slow * (this.slowT > 0 ? this.slowMul : 1);
       const acc = (this.ground ? (dir ? 4200 : 7000) : 3800) * dt;
       this.vx += Phaser.Math.Clamp(target - this.vx, -acc, acc);
-      if (this.in.jump && this.ground && this.action !== 'special' && this.action !== 'hurt') {
+      if (this.in.jump && this.ground && this.action !== 'special' && this.action !== 'hurt' && this.action !== 'guard') {
         this.vy = JUMP_V; this.ground = false; this.plat = null; Sfx.play('jump', 0.35); this.s.dust(this.x, 4, this.y);
       }
       if (this.in.drop && this.plat) { this.plat = null; this.ground = false; this.dropT = 180; }
@@ -434,7 +503,7 @@ class Rival {
       if (!this.ground && !d) { const k = Phaser.Math.Clamp(Math.abs(this.vy) / 2600, 0, 0.07); by += k; bx -= k * 0.5; }
       this.spr.x = this.x; this.spr.y = this.y - bob;
       const lean = !d && !this.action ? Phaser.Math.Clamp(this.vx / MOVE_SPEED, -1, 1) * (this.ground ? 3 : 5) : 0;
-      this.spr.angle = d && (d.kind === 'bash' || d.kind === 'airdash' || d.kind === 'charge' || d.kind === 'shieldbash') ? d.dir * 10 : Phaser.Math.Linear(this.spr.angle, lean, Math.min(1, dt * 14));
+      this.spr.angle = d && d.kind === 'leap' ? -d.dir * 12 * Math.sin(Math.min(1, d.t / d.dur) * Math.PI) : d && (d.kind === 'bash' || d.kind === 'airdash' || d.kind === 'charge' || d.kind === 'shieldbash') ? d.dir * 10 : Phaser.Math.Linear(this.spr.angle, lean, Math.min(1, dt * 14));
       this.spr.setScale(this.baseScale * tv * bx, this.baseScale * by);
       const blink = this.inv > 0 && this.action !== 'special' && !this.dash && this.action === 'hurt';
       this.spr.setAlpha(blink ? (Math.floor(s.time.now / 70) % 2 ? 0.5 : 1) : 1);
@@ -452,6 +521,8 @@ class Rival {
     if (this.dash || this.action === 'special' || (this.action === 'hurt' && now - this.hurtAt < 260)) return;
     const dx = p.x - this.x, dist = Math.abs(dx), dir = Math.sign(dx) || 1, dy = this.y - p.y;
     const melee = this.cls === 'warrior', [near, far] = RIVAL_RANGE[this.cls];
+    if (this.guard) { if (dist > 200) this.in.dir = dir; return; } // segurando o escudo: só avança devagar
+    const has3 = this.c.level >= CLASS_SKILLS[this.cls][3].lvl && this.cd3 <= 0;
     // muda de "humor" de vez em quando (mais agressivo / mais cauteloso) para não ficar previsível
     this.moodT -= dt; if (this.moodT <= 0) { this.moodT = Phaser.Math.FloatBetween(1.5, 3.5); this.mood = Math.random() < 0.5 ? 0 : Phaser.Math.FloatBetween(-120, 120); }
 
@@ -460,6 +531,10 @@ class Rival {
     this.dangerT = danger ? this.dangerT + dt : 0;
     const react = 0.42 - sk * 0.3;
     if (danger && this.dangerT >= react && this.dodgeCd <= 0) {
+      // guerreiro: levanta a Muralha de Escudo virado para o perigo (às vezes no lugar do desvio)
+      if (melee && has3 && this.ground && Math.random() < 0.25 + sk * 0.5) { this.dodgeCd = 0.6; this.doSkill3(dir); return; }
+      // atiradores: inimigo colado → Salto Evasivo / Nova Gélida
+      if (!melee && has3 && danger === 'melee' && dist < 300 && Math.random() < 0.3 + sk * 0.5) { this.dodgeCd = 0.6; this.doSkill3(dir); return; }
       this.dodgeCd = 0.6;
       if (Math.random() < 0.15 + sk * 0.7) {
         if (danger === 'shot' && this.ground && Math.random() < 0.45) { this.in.jump = true; return; }
@@ -482,6 +557,10 @@ class Rival {
       }
     }
 
+    // fuga: atirador com o inimigo perto demais
+    if (!melee && has3 && dist < (this.cls === 'mage' ? 230 : 260) && Math.abs(dy) < 160 && Math.random() < dt * (0.8 + sk * 3)) {
+      this.doSkill3(dir); return;
+    }
     // 3) andar / pular / atacar
     const aggr = 0.55 + sk * 0.45;
     if (melee) {
@@ -605,12 +684,12 @@ class ArenaScene extends Phaser.Scene {
     Net.on('hello', (d) => {
       if (started) return; started = true;
       this.waiting = false;
-      if ((d.v || 0) !== 1) { toast(this, 'O amigo está com outra versão do jogo', COL.red); Net.close(); return; }
+      if ((d.v || 0) !== 2) { toast(this, 'O amigo está com outra versão do jogo', COL.red); Net.close(); return; }
       fadeTo(this, 'ArenaBattle', { mode: 'net', opp: d.me, role: Net.role, code: Net.code });
     });
     Net.on('close', () => { if (!started) { toast(this, 'O amigo saiu da sala', COL.red); this.scene.restart(); } });
     Net.on('error', (e) => { toast(this, e.msg, COL.red); });
-    Net.send('hello', { v: 1, me });
+    Net.send('hello', { v: 2, me }); // v2 = tecla I (0.6.0)
   }
   createRoom() {
     if (!this.netReady()) return;
@@ -769,7 +848,8 @@ class ArenaBattleScene extends BattleScene {
         this.tweens.add({ targets: d, alpha: 0, scale: 0.1, duration: 260, onComplete: () => d.destroy() });
       }
       if (!sh.done && !p.dead && Math.abs(sh.s.x - p.x) < 38 + sh.r && sh.s.y > p.y - 205 - sh.r && sh.s.y < p.y + 12 + sh.r) {
-        const ok = sh.owner.hitPlayer(sh.mult, sh.s.x - sh.vx * 0.05);
+        const sx = sh.s.x - sh.vx * 0.05, o = { key: sh.s.texture.key, noBlock: !!sh.fixed };
+        const ok = sh.fixed ? this.hurtPlayer(sh.fixed, sx, o) : sh.owner.hitPlayer(sh.mult, sx, o);
         if (ok) { if (sh.onHit) sh.onHit(sh.s.x, sh.s.y); else this.burst(sh.s.x, sh.s.y, 0xffe3a0, 5); if (!sh.pierce) sh.life = 0; sh.done = !sh.pierce ? true : sh.done; }
       }
       if (sh.life <= 0) sh.s.destroy();
@@ -784,11 +864,17 @@ class ArenaBattleScene extends BattleScene {
     this.p.mp = Math.min(100, this.p.mp + 7);
     if (this.netMode) { // efeito na hora; o dano de verdade quem confirma é o aparelho do amigo
       if (m.dodging) return;
+      if (!opt.noBlock && m.guardBlocks(opt.srcX ?? this.p.x)) { m.blockFx(); return; }
       m.spr.setTintFill(0xffffff); this.time.delayedCall(60, () => { if (m.spr.active) m.spr.clearTint(); });
       this.burst(m.x, m.y - 110, 0xffe3a0, roll.crit ? 8 : 4); Sfx.hit(); this.freeze(35);
       return;
     }
     m.takeHit(roll, knock, opt);
+  }
+  slowRival(m, mul, secs) { if (!this.netMode && !m.dead) { m.slowT = Math.max(m.slowT, secs); m.slowMul = mul; this.floatText(m.x, m.y - 250, 'LENTO!', '#9fdfff', 20); } }
+  pushMonster(m, dir, dist) {
+    if (!m.rival) return super.pushMonster(m, dir, dist);
+    if (!this.netMode && !m.dead && !m.dodging && !m.guard) m.kvx = dir * dist * 7;
   }
   freezeMonster(m, secs, stun = false) {
     if (!m.rival) return super.freezeMonster(m, secs, stun);
@@ -802,11 +888,12 @@ class ArenaBattleScene extends BattleScene {
     p.action = null; p.spr.anims.pause(); p.spr.setTint(stun ? 0xfff0a0 : 0x9fdfff);
     this.floatText(p.x, p.y - 230, stun ? 'ATORDOADO!' : 'CONGELADO!', stun ? '#ffe27a' : '#9fdfff', 22);
   }
-  hurtPlayer(dmg, srcX) {
-    const p = this.p, hp0 = p.hp, dodge0 = p.lastDodgeT;
-    const r = super.hurtPlayer(dmg, srcX);
+  hurtPlayer(dmg, srcX, o) {
+    const p = this.p, hp0 = p.hp, dodge0 = p.lastDodgeT, block0 = p.lastBlockT;
+    const r = super.hurtPlayer(dmg, srcX, o);
     if (this.netMode) {
-      if (r) this.sendNow('hurt', { d: Math.round(hp0 - Math.max(0, p.hp)) });
+      if (p.lastBlockT !== block0) {} // bloqueou: o aviso ('refl') já foi
+      else if (r) this.sendNow('hurt', { d: Math.round(hp0 - Math.max(0, p.hp)) });
       else if (p.lastDodgeT !== dodge0) this.ns('dodge');
     }
     return r;
@@ -904,6 +991,8 @@ class ArenaBattleScene extends BattleScene {
     else if (d.a === 'sp') r.doSpecial(d.face);
     else if (d.a === 's2') r.doSkill2(d.face);
     else if (d.a === 'dash') r.doDash(d.kind, d.dir);
+    else if (d.a === 's3') r.doSkill3(d.face);
+    else if (d.a === 'refl') r.reflect(d.d, d.k);
   }
 
   // ---------------------------------------------------------- FIM
